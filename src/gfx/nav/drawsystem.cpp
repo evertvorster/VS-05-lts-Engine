@@ -64,10 +64,10 @@ void NavigationSystem::DrawSystem()
                                  +"  #ff0000Current System: #ffff00"+_Universe->activeStarSystem()->getName()+" ("
                                  +FactionUtil::GetFactionName( faction )
                                  +"#ffff00)";
-    //int length = systemnamestring.size();
-    //float offset = (float(length)*0.001);
-    //systemname.SetPos( (((screenskipby4[0]+screenskipby4[1])/2)-offset) , screenskipby4[3]); // middle position
-    systemname.SetPos( screenskipby4[0]+0.03, 0.96f );     //left position, inset below the top edge
+    int    length   = systemnamestring.size();
+    float  offset   = (float(length)*0.0035f);      // approx half the title width, for centering
+    float  midx     = (screenskipby4[0]+screenskipby4[1])/2.0f;
+    systemname.SetPos( midx-offset, 0.96f );     //centred, inset below the top edge
     systemname.col = GFXColor( 1, 1, .7, 1 );
     systemname.SetText( systemnamestring );
 //systemname.SetCharSize(1, 1);

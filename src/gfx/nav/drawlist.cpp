@@ -151,12 +151,12 @@ void drawdescription( string text,
 
     int   length = text.size();
     float offset = (float(length)*0.005);
-    if (ignore_occupied_areas) {
-        displayname.SetPos( (x_-offset), y_ );
-        displayname.SetText( text );
-        displayname.SetCharSize( size_x, size_y );
-    } else {
-        float new_y = screenoccupation->findfreesector( x_, y_ );
+    // Always draw the label at the object's actual screen position. Do NOT use
+    // findfreesector() to push labels into an expanding vertical list when many
+    // objects cluster — overlapping labels are handled by the cluster-collapse
+    // pass instead. This is what was drawing the super-long lists.
+    {
+        float new_y = y_;
         displayname.SetPos( (x_-offset), new_y );
         displayname.SetText( text );
         displayname.SetCharSize( size_x, size_y );

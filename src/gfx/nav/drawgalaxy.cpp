@@ -64,21 +64,14 @@ static void DrawNodeDescription( string text,
         XMLSupport::parse_float( vs_config->getVariable( "graphics", "hud", "text_background_alpha", "0.0625" ) );
     int   length = text.size();
     float offset = (float(length)*0.005);
-    if (ignore_occupied_areas) {
+    // Always draw the label at the object's actual screen position — do NOT
+    // spread labels into a vertical list via findfreesector when objects
+    // cluster. Overlaps are handled by the cluster-collapse pass.
+    {
         displayname.SetPos( (x_-offset), y_ );
         displayname.SetText( text );
         displayname.SetCharSize( size_x, size_y );
 
-        GFXColor tpbg = displayname.bgcol;
-        bool     automatte = (0 == tpbg.a);
-        if (automatte) displayname.bgcol = GFXColor( 0, 0, 0, background_alpha );
-        displayname.Draw( text, 0, true, false, automatte );
-        displayname.bgcol = tpbg;
-    } else {
-        float new_y = screenoccupation->findfreesector( x_, y_ );
-        displayname.SetPos( (x_-offset), new_y );
-        displayname.SetText( text );
-        displayname.SetCharSize( size_x, size_y );
         GFXColor tpbg = displayname.bgcol;
         bool     automatte = (0 == tpbg.a);
         if (automatte) displayname.bgcol = GFXColor( 0, 0, 0, background_alpha );
@@ -109,7 +102,8 @@ static void DrawNode( int type,
                       GFXColor race,
                       bool mouseover = false,
                       bool willclick = false,
-                      string insector = "" )
+                      string insector = "",
+                      bool showlabel = false )
 {
     char color = GetSystemColor( source );
     if (moused)
@@ -144,7 +138,11 @@ static void DrawNode( int type,
         }
     }
     NavigationSystem::DrawCircle( x, y, size, race );
-    if ( (!mouseover) || (willclick) ) {
+    // Label only the player's current system (or the mouse-over/clicked one).
+    // In the galaxy view there is no single "largest" object, so we avoid
+    // labelling every system (which overlapped or spread into a long list); the
+    // current system's name is enough.
+    if ( (showlabel && !mouseover) || willclick ) {
         string tsector, nam;
         Beautify( source, tsector, nam );
         if (willclick) {
@@ -743,11 +741,11 @@ void NavigationSystem::DrawGalaxy()
     TextPlane systemname;       //will be used to display shits names
     string    systemnamestring = "Current System : "+csystem+" in the "+csector+" Sector.";
 
-//int length = systemnamestring.size();
-//float offset = (float(length)*0.005);
+    int    length = systemnamestring.size();
+    float  offset = (float(length)*0.0035f);      // approx half the title width, for centering
+    float  midx   = (screenskipby4[0]+screenskipby4[1])/2.0f;
     systemname.col = GFXColor( 1, 1, .7, 1 );
-    systemname.SetPos( screenskipby4[0]+0.03, 0.96f );     //left position, inset below the top edge
-//systemname.SetPos( (((screenskipby4[0]+screenskipby4[1])/2)-offset) , screenskipby4[3]);
+    systemname.SetPos( midx-offset, 0.96f );     //centred, inset below the top edge
     systemname.SetText( systemnamestring );
 //systemname.SetCharSize(1, 1);
     systemname.Draw();
@@ -909,7 +907,7 @@ void NavigationSystem::DrawGalaxy()
         bool moused = false;
         DrawNode( insert_type, insert_size, the_x, the_y,
                   (*systemIter).GetName(), screenoccupation, moused, isPath ? pathcol : col, false, false,
-                  isPath ? "" : csector );
+                  isPath ? "" : csector, (currentsystemindex == temp) );
         if ( TestIfInRangeRad( the_x, the_y, insert_size, mouse_x_current, mouse_y_current ) ) {
             mouselist.push_back( systemdrawnode( insert_type, insert_size, the_x, the_y, (*systemIter).GetName(),
                                                  systemIter.getIndex(), screenoccupation, false, isPath ? pathcol : col ) );

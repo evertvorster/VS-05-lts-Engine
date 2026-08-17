@@ -338,11 +338,12 @@ void NavigationSystem::Draw()
     static bool draw_nav_help = XMLSupport::parse_bool( vs_config->getVariable( "graphics", "draw_nav_help", "true" ) );
     if (draw_nav_help) {
         float help_y = -0.88f;
+        float midx   = (screenskipby4[0]+screenskipby4[1])/2.0f;
         GFXColor helpcol( 0.7f, 0.7f, 0.7f, 0.85f );
         drawdescription( "Mouse:  right-drag = rotate   left/mid-drag = pan   wheel = zoom",
-                         screenskipby4[0]+0.03f, help_y, 0.6f, 0.6f, true, screenoccupation, helpcol );
+                         midx, help_y, 0.6f, 0.6f, true, screenoccupation, helpcol );
         drawdescription( "Keys:   arrows = pan   Shift+arrows = rotate   Alt+up/down = zoom   Alt+left/right = pan",
-                         screenskipby4[0]+0.03f, help_y+0.06f, 0.6f, 0.6f, true, screenoccupation, helpcol );
+                         midx, help_y+0.06f, 0.6f, 0.6f, true, screenoccupation, helpcol );
     }
 
     //Draw the screen basics
