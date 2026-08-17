@@ -303,6 +303,10 @@ void NavigationSystem::DrawSystem()
         if ( system_item_scale_temp > (system_item_scale*3) )
             system_item_scale_temp = (system_item_scale*3);
         insert_size *= system_item_scale_temp;
+        // Keep items above a minimum on-screen size so they stay visible when
+        // zoomed out to a huge extent (e.g. two clusters far apart in a system).
+        if (insert_size < NavMinItemSize())
+            insert_size = NavMinItemSize();
         if ( _Universe->AccessCockpit()->GetParent()->Target() == (*blah) ) {
             //Get a color from the config
             static float col[4] = {1, 0.3, 0.3, 0.8};

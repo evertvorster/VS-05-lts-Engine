@@ -1258,30 +1258,32 @@ bool NavigationSystem::CheckDraw()
 void NavigationSystem::Adjust3dTransformation( bool system_vs_galaxy )
 {
     // Coherent camera model input handler. Drives the active view's NavMap
-    // directly: left-drag = rotate (orbit in 3D, roll the map in top-down),
-    // middle/right-drag = pan (translate the camera perpendicular to the view),
-    // wheel = zoom (move the camera forward/back toward the focus).
+    // directly, with consistent bindings across the whole nav computer:
+    //   right-drag  = rotate (orbit in 3D, roll the map in top-down)
+    //   left-drag   = pan (translate the camera perpendicular to the view)
+    //   middle-drag = pan
+    //   wheel       = zoom (move the camera forward/back toward the focus)
     NavMap &cam = system_vs_galaxy ? systemCam : galaxyCam;
     if ( !TestIfInRange( screenskipby4[0], screenskipby4[1], screenskipby4[2], screenskipby4[3], mouse_x_current,
                          mouse_y_current ) )
         return;
 
-    // ROTATE on left (button 1) drag — orbit (3D) or roll (top-down).
+    // ROTATE on right (button 3) drag — orbit (3D) or roll (top-down).
     // Sensitivity tuned for the normalised mouse deltas (~[-1,1] across the
-    // screen): 0.2 rad per full-screen drag. Bumped 10x from 0.02 per play-test.
-    if ( mouse_previous_state[0] == 1 ) {
+    // screen): 0.6 rad per full-screen drag (3x the 0.2 baseline, per play-test).
+    if ( mouse_previous_state[2] == 1 ) {
         float ndx = (mouse_x_current-mouse_x_previous);
         float ndy = (mouse_y_current-mouse_y_previous);
         if (cam.topDown()) {
-            cam.rollBy( ndx*0.2f );        // top-down: spin the map in its own plane
+            cam.rollBy( ndx*0.6f );        // top-down: spin the map in its own plane
         } else {
-            cam.orbitBy( ndx*0.2f, ndy*0.2f );
+            cam.orbitBy( ndx*0.6f, ndy*0.6f );
         }
     }
 
-    // PAN on middle (button 2) or right (button 3) drag — translate the camera
+    // PAN on left (button 1) or middle (button 2) drag — translate the camera
     // perpendicular to the view (shift the orbit target along camera right/up).
-    if ( (mouse_previous_state[1] == 1) || (mouse_previous_state[2] == 1) ) {
+    if ( (mouse_previous_state[0] == 1) || (mouse_previous_state[1] == 1) ) {
         float ndx = (mouse_x_current-mouse_x_previous);
         float ndy = (mouse_y_current-mouse_y_previous);
         cam.panBy( -ndx, -ndy );

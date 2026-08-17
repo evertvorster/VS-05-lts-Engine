@@ -886,6 +886,10 @@ void NavigationSystem::DrawGalaxy()
         if ( system_item_scale_temp > (system_item_scale*3) )
             system_item_scale_temp = (system_item_scale*3);
         insert_size *= system_item_scale_temp/3;
+        // Keep items above a minimum on-screen size so they stay visible when
+        // zoomed out to a huge extent.
+        if (insert_size < NavMinItemSize())
+            insert_size = NavMinItemSize();
         if (currentsystemindex == temp)
             DrawTargetCorners( the_x, the_y, (insert_size), currentcol );
         if (destinationsystemindex == temp)

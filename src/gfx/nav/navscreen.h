@@ -18,6 +18,17 @@
 // Vertical fov (radians) used when auto-framing a NavMap camera to an extent.
 #define NAV_FIT_FOV 1.0f
 
+// Minimum icon size in HUD units (~15px). HUD coords span [-1,1] = 2 units
+// across the screen, so 1 unit = x_res/2 pixels; 15px ≈ 30/x_res units.
+// Items never shrink below this, so zooming out to a huge extent keeps them
+// visible (the current 2013-style sscale clamp of 0.2 leaves them tiny).
+static inline float NavMinItemSize()
+{
+    const float px = 15.0f;
+    const float res = (float) g_game.x_resolution;
+    return (res > 0.0f) ? (2.0f*px/res) : 0.015f;
+}
+
 void Beautify( string systemfile, string &sector, string &system );
 class NavigationSystem
 {
