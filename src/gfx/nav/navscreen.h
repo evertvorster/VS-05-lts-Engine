@@ -188,7 +188,7 @@ private:
     bool          mouse_wentup[5];
     bool          mouse_wentdown[5];
     UnitContainer currentselection;
-    Unit         *navPivotUnit;   // the significant object the orbit camera pivots on (if any)
+    double        navNearDist;    // dist from camera to nearest significant object (for zoom/pan scale)
     GFXColor     *factioncolours;
     GFXColor      currentcol;
     GFXColor      destinationcol;

@@ -143,7 +143,7 @@ void NavigationSystem::Setup()
     else
         whattodraw = (1|2);
     currentselection = NULL;
-    navPivotUnit     = NULL;
+    navNearDist      = 1.0;
     factioncolours   = new GFXColor[FactionUtil::GetNumFactions()];
     unselectedalpha  = 1.0;
 
@@ -1281,24 +1281,26 @@ void NavigationSystem::Adjust3dTransformation( bool system_vs_galaxy )
         }
     }
 
-    // PAN on left (button 1) or middle (button 2) drag — translate the camera
-    // perpendicular to the view (shift the orbit target along camera right/up).
+    // PAN on left (button 1) or middle (button 2) drag — strafe the camera
+    // along its right/up axes. Step scales with the distance to the nearest
+    // significant object so panning is fast in empty space and fine near objects.
     if ( (mouse_previous_state[0] == 1) || (mouse_previous_state[1] == 1) ) {
         float ndx = (mouse_x_current-mouse_x_previous);
         float ndy = (mouse_y_current-mouse_y_previous);
-        cam.panBy( -ndx, -ndy );
+        double step = navNearDist * 0.5;
+        cam.panBy( -ndx*step, -ndy*step );
     }
 
-    // ZOOM on wheel — move the camera forward/back toward the focus.
-    // Wheel is reported directly in getMouseButtonStatus(): bit 8 = wheel up,
-    // bit 16 = wheel down.
+    // ZOOM on wheel — move the camera forward (wheel up) or back (wheel down)
+    // along its view direction. Step scales with navNearDist: huge through
+    // empty space, fine as you close on an object.
     int  wheelbits = getMouseButtonStatus();
     bool wheelup   = (wheelbits & 8) != 0;
     bool wheeldn   = (wheelbits & 16) != 0;
     static float wheel_zoom_amount = XMLSupport::parse_float( vs_config->getVariable( "graphics", "wheel_zoom_amount", "0.1" ) );
     if ( wheelup || wheeldn || mouse_wentdown[3] || mouse_wentdown[4] ) {
-        float factor = (wheelup || mouse_wentdown[3]) ? (1.0f/(1.0f+wheel_zoom_amount)) : (1.0f+wheel_zoom_amount);
-        cam.zoomBy( factor );
+        double step = navNearDist * wheel_zoom_amount;
+        cam.zoomBy( (wheelup || mouse_wentdown[3]) ? step : -step );
     }
     //**********************************
 }
@@ -1343,12 +1345,13 @@ void NavigationSystem::RecordMinAndMax( const QVector &pos,
 
 void NavigationSystem::DrawOriginOrientationTri( float center_nav_x, float center_nav_y, bool system_not_galaxy )
 {
-    // Draw the world X/Y/Z orientation triad at the map centre, projected
-    // through the active NavMap camera. Each axis is drawn from the projected
-    // map centre to the projected tip (target + 0.25*axis*distance).
+    // Draw the world X/Y/Z orientation triad at the camera's view focus point
+    // (position + view direction * nominal distance), projected through the
+    // camera. Each axis is drawn from the projected focus to the projected tip.
     NavMap &cam = system_not_galaxy ? systemCam : galaxyCam;
-    QVector center = cam.target();
-    float   len    = 0.25f * cam.distance();
+    float   len = 0.25f * cam.nominalDistance();
+    // Focus point = camera position + view direction * nominal distance.
+    QVector center = cam.position() + cam.forward() * cam.nominalDistance();
 
     float cx, cy, css, ax, ay, ass;
     if ( !cam.project( center, cx, cy, css ) )

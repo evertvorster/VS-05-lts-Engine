@@ -146,9 +146,8 @@ void NavigationSystem::DrawSystem()
         if (maxdist <= 0.0f)
             maxdist = dists.back();
 
-        // Fit the camera so maxdist fits the viewport.
-        systemCam.setTarget( center );
-        systemCam.setDistanceFromExtent( maxdist, maxdist, maxdist, NAV_FIT_FOV );
+        // Fit the camera so maxdist fits the viewport, looking at the centre.
+        systemCam.setFraming( center, maxdist, maxdist, maxdist, NAV_FIT_FOV );
         systemNeedsRefit = false;
     }
     DrawOriginOrientationTri( center_nav_x, center_nav_y, 1 );
@@ -177,18 +176,9 @@ void NavigationSystem::DrawSystem()
     std::vector< NavItem > drawn;
     drawn.reserve( 64 );
 
-    // Pivot detection: the orbit camera rotates around the largest significant
-    // object (planet/station/jump/sun) whose screen position lands in the middle
-    // third of the screen, so rotation keeps that object steady. Tracked in the
-    // loop below, applied after.
-    Unit  *pivotBest  = NULL;
-    float  pivotSize  = -1.0f;
-    // Middle third of the free area, in HUD coords.
-    float  midX0 = center_nav_x - 0.33f, midX1 = center_nav_x + 0.33f;
-    float  midY0 = center_nav_y - 0.33f, midY1 = center_nav_y + 0.33f;
-
     //Enlist the items and attributes
     //**********************************
+    navNearDist = 1e30;   // reset nearest-in-view distance for this frame
     un_iter blah = UniverseUtil::getUnitList();
     while (*blah) {
         //this draws the points
@@ -325,17 +315,24 @@ void NavigationSystem::DrawSystem()
             insert_size = NavMinItemSize();
         Unit *myunit = (*blah);
 
-        // Track the largest significant object in the middle third of the screen
-        // as the orbit pivot (keeps rotation steady around the object in view).
-        bool isPivotType = (insert_type == navplanet || insert_type == navstation
-                            || insert_type == navjump || insert_type == navsun
-                            || insert_type == navcapship);
-        if (isPivotType
-            && the_x >= midX0 && the_x <= midX1
-            && the_y >= midY0 && the_y <= midY1
-            && insert_size > pivotSize) {
-            pivotSize = insert_size;
-            pivotBest = myunit;
+        // Track the distance to the nearest significant object IN VIEW (ahead of
+        // the camera, roughly within the view cone) — used to scale zoom/pan so
+        // the camera moves fast through empty space and finely near objects. Only
+        // objects ahead of the camera count, so turning away from a planet doesn't
+        // slow your zoom toward the next one.
+        {
+            bool sig = (insert_type == navplanet || insert_type == navstation
+                        || insert_type == navjump || insert_type == navsun
+                        || insert_type == navcapship);
+            if (sig) {
+                QVector toObj = pos - systemCam.position();
+                if (toObj.Dot( systemCam.forward() ) > 0.0)
+                    {
+                        double d = toObj.Magnitude();
+                        if (d < navNearDist)
+                            navNearDist = d;
+                    }
+            }
         }
 
         // Buffer this drawable item. Overlapping clusters are collapsed to the
@@ -350,18 +347,6 @@ void NavigationSystem::DrawSystem()
         drawn.push_back( item );
 
         ++blah;
-    }
-
-    // Apply the orbit pivot: rotate/zoom around the largest significant object
-    // in the middle third of the screen, keeping it steady. Re-target ONLY when
-    // no mouse button is held (i.e. not mid-drag): during a pan or rotate the
-    // camera must stay put — pan just translates the view, rotate orbits the
-    // current pivot. Re-snapping mid-pan is what made the view jump as objects
-    // entered the middle third.
-    bool dragging = (mouse_previous_state[0] || mouse_previous_state[1] || mouse_previous_state[2]);
-    if (!dragging && pivotBest && pivotBest != navPivotUnit) {
-        navPivotUnit = pivotBest;
-        systemCam.setTarget( pivotBest->Position() );
     }
 
     // Collapse overlapping items: when several objects project to nearly the

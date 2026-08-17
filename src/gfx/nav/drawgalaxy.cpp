@@ -805,14 +805,14 @@ void NavigationSystem::DrawGalaxy()
         float half_y = vsmax( max_y-center.j, center.j-min_y );
         float half_z = vsmax( max_z-center.k, center.k-min_z );
 
-        galaxyCam.setTarget( center );
-        galaxyCam.setDistanceFromExtent( half_x, half_y, half_z, NAV_FIT_FOV );
+        galaxyCam.setFraming( center, half_x, half_y, half_z, NAV_FIT_FOV );
         galaxyNeedsRefit = false;
     }
     DrawOriginOrientationTri( center_nav_x, center_nav_y, 0 );
 
     //Enlist the items and attributes
     //**********************************
+    navNearDist = 1e30;   // reset nearest-in-view distance for this frame
     systemIter.seek();
     while ( !systemIter.done() ) {
         //this draws the points
@@ -839,6 +839,16 @@ void NavigationSystem::DrawGalaxy()
         // Offset the projected point into the free area (left of the buttons).
         the_x = center_nav_x + the_x;
         the_y = center_nav_y + the_y;
+
+        // Track the nearest system in view for adaptive zoom/pan scaling.
+        {
+            QVector toObj = pos - galaxyCam.position();
+            if (toObj.Dot( galaxyCam.forward() ) > 0.0) {
+                double d = toObj.Magnitude();
+                if (d < navNearDist)
+                    navNearDist = d;
+            }
+        }
 
         // Perspective size factor (1.0 at the target distance) drives the icon
         // size and a gentle distance fade.
