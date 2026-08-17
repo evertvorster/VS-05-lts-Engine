@@ -151,23 +151,6 @@ void NavigationSystem::DrawSystem()
         systemCam.setDistanceFromExtent( maxdist, maxdist, maxdist, NAV_FIT_FOV );
         systemNeedsRefit = false;
     }
-    // Orbit pivot: rotate/zoom around the significant object currently in view
-    // (planets, stations/bases, jump points — the same set 'n' cycles). If the
-    // player has such an object targeted, pivot the camera on it; otherwise
-    // pivot on the player's position (the fit centre). Only re-target when the
-    // player isn't mid-drag, so an in-progress pan/orbit isn't yanked.
-    {
-        Unit *pivot = NULL;
-        Unit *pl    = _Universe->AccessCockpit()->GetParent();
-        Unit *tgt   = pl ? pl->Target() : NULL;
-        if (tgt && UnitUtil::isSignificant( tgt ) && !UnitUtil::isSun( tgt ))
-            pivot = tgt;
-        if (pivot != navPivotUnit) {
-            navPivotUnit = pivot;
-            if (pivot)
-                systemCam.setTarget( pivot->Position() );
-        }
-    }
     DrawOriginOrientationTri( center_nav_x, center_nav_y, 1 );
 
 /*
@@ -193,6 +176,16 @@ void NavigationSystem::DrawSystem()
     struct NavItem { int type; float size, x, y; Unit *unit; };
     std::vector< NavItem > drawn;
     drawn.reserve( 64 );
+
+    // Pivot detection: the orbit camera rotates around the largest significant
+    // object (planet/station/jump/sun) whose screen position lands in the middle
+    // third of the screen, so rotation keeps that object steady. Tracked in the
+    // loop below, applied after.
+    Unit  *pivotBest  = NULL;
+    float  pivotSize  = -1.0f;
+    // Middle third of the free area, in HUD coords.
+    float  midX0 = center_nav_x - 0.33f, midX1 = center_nav_x + 0.33f;
+    float  midY0 = center_nav_y - 0.33f, midY1 = center_nav_y + 0.33f;
 
     //Enlist the items and attributes
     //**********************************
@@ -331,6 +324,20 @@ void NavigationSystem::DrawSystem()
         if (insert_size < NavMinItemSize())
             insert_size = NavMinItemSize();
         Unit *myunit = (*blah);
+
+        // Track the largest significant object in the middle third of the screen
+        // as the orbit pivot (keeps rotation steady around the object in view).
+        bool isPivotType = (insert_type == navplanet || insert_type == navstation
+                            || insert_type == navjump || insert_type == navsun
+                            || insert_type == navcapship);
+        if (isPivotType
+            && the_x >= midX0 && the_x <= midX1
+            && the_y >= midY0 && the_y <= midY1
+            && insert_size > pivotSize) {
+            pivotSize = insert_size;
+            pivotBest = myunit;
+        }
+
         // Buffer this drawable item. Overlapping clusters are collapsed to the
         // largest object after the loop (the player is always drawn), instead of
         // spreading into an expanding label list.
@@ -343,6 +350,15 @@ void NavigationSystem::DrawSystem()
         drawn.push_back( item );
 
         ++blah;
+    }
+
+    // Apply the orbit pivot: rotate/zoom around the largest significant object
+    // in the middle third of the screen, keeping it steady. Only re-target when
+    // a new valid pivot is found, so the camera isn't yanked when the object
+    // leaves the middle third.
+    if (pivotBest && pivotBest != navPivotUnit) {
+        navPivotUnit = pivotBest;
+        systemCam.setTarget( pivotBest->Position() );
     }
 
     // Collapse overlapping items: when several objects project to nearly the
