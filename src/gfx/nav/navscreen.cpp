@@ -1277,7 +1277,7 @@ void NavigationSystem::Adjust3dTransformation( bool system_vs_galaxy )
         if (cam.topDown()) {
             cam.rollBy( ndx*0.6f );        // top-down: spin the map in its own plane
         } else {
-            cam.orbitBy( ndx*0.6f, ndy*0.6f );
+            cam.orbitBy( ndx*0.6f, -ndy*0.6f );   // y flipped so drag-up looks up
         }
     }
 
