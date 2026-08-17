@@ -133,6 +133,19 @@ void NavigationSystem::DrawSystem()
         float  half_y = 0.5f*(max_y-min_y);
         float  half_z = 0.5f*(max_z-min_z);
 
+        // DEBUG: dump fit + first unit positions to understand the broken system view
+        {
+            fprintf( stderr, "[NAVSYS-FIT] min=(%.0f,%.0f,%.0f) max=(%.0f,%.0f,%.0f) center=(%.0f,%.0f,%.0f) half=(%.1f,%.1f,%.1f)\n",
+                     min_x, min_y, min_z, max_x, max_y, max_z,
+                     center.i, center.j, center.k, half_x, half_y, half_z );
+            int dbg = 0;
+            for (un_iter d = UniverseUtil::getUnitList(); (*d) && dbg < 5; ++d, ++dbg) {
+                QVector p = (*d)->Position();
+                fprintf( stderr, "  unit pos=(%.1f,%.1f,%.1f) type=%d\n",
+                         p.i, p.j, p.k, (int)(*d)->isUnit() );
+            }
+        }
+
         systemCam.setTarget( center );
         systemCam.setDistanceFromExtent( half_x, half_y, half_z, NAV_FIT_FOV );
         systemNeedsRefit = false;
