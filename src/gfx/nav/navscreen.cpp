@@ -1347,7 +1347,7 @@ void NavigationSystem::DrawOriginOrientationTri( float center_nav_x, float cente
     // through the active NavMap camera. Each axis is drawn from the projected
     // map centre to the projected tip (target + 0.25*axis*distance).
     NavMap &cam = system_not_galaxy ? systemCam : galaxyCam;
-    Vector  center = cam.target();
+    QVector center = cam.target();
     float   len    = 0.25f * cam.distance();
 
     float cx, cy, css, ax, ay, ass;
@@ -1361,7 +1361,7 @@ void NavigationSystem::DrawOriginOrientationTri( float center_nav_x, float cente
     GFXBlendMode( SRCALPHA, INVSRCALPHA );
 
     // X=red, Y=green, Z=blue
-    const Vector dirs[3] = { Vector( 1, 0, 0 ), Vector( 0, 1, 0 ), Vector( 0, 0, 1 ) };
+    const QVector dirs[3] = { QVector( 1, 0, 0 ), QVector( 0, 1, 0 ), QVector( 0, 0, 1 ) };
     const float  cols[3][4] = { { 1, 0, 0, 0.5f }, { 0, 1, 0, 0.5f }, { 0, 0, 1, 0.5f } };
     float verts[3*2*(3+4)];
     int n = 0;

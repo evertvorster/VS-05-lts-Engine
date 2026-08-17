@@ -779,11 +779,11 @@ void NavigationSystem::DrawGalaxy()
         float min_y = 0.0;
         float max_z = 0.0;
         float min_z = 0.0;
-        Vector center;
+        QVector center;
 
         systemIter.seek( focusedsystemindex );
         pos = systemIter->Position();
-        center = Vector( pos.i, pos.j, pos.k );
+        center = pos;
 
         max_x = (float) pos.i;
         min_x = (float) pos.i;
@@ -832,7 +832,7 @@ void NavigationSystem::DrawGalaxy()
 
         GFXColor col = systemIter->GetColor();
         float    the_x, the_y, sscale, system_item_scale_temp;
-        if ( !galaxyCam.project( Vector( pos.i, pos.j, pos.k ), the_x, the_y, sscale ) ) {
+        if ( !galaxyCam.project( pos, the_x, the_y, sscale ) ) {
             ++systemIter;
             continue;
         }
@@ -918,7 +918,7 @@ void NavigationSystem::DrawGalaxy()
                     QVector posoth = oth.Position();
 
                     float the_new_x, the_new_y, oth_sscale, oth_item_scale;
-                    if ( !galaxyCam.project( Vector( posoth.i, posoth.j, posoth.k ), the_new_x, the_new_y, oth_sscale ) )
+                    if ( !galaxyCam.project( posoth, the_new_x, the_new_y, oth_sscale ) )
                         continue;
                     the_new_x = center_nav_x + the_new_x;
                     the_new_y = center_nav_y + the_new_y;

@@ -15,12 +15,16 @@
 //              view direction) in top-down.
 //   - Top-down = camera snapped to look straight down a chosen world axis; a
 //     fresh snap each time 2D is entered. Left-drag rolls the map in its plane.
+//
+// All world/camera math uses QVector (double) so huge sector coordinates (a
+// sector can span ~1e11+ units — light-minutes between clusters) keep enough
+// precision. float Vector would collapse the relative positions at those
+// magnitudes.
 
 #include "../vec.h"
 #include "gfxlib_struct.h"
 
 class Matrix;
-struct QVector;
 
 class NavMap
 {
@@ -30,11 +34,11 @@ public:
 
     // View state
     void setCamera( float yaw, float pitch, float distance );
-    void setTarget( const Vector &center );      // orbit target (galaxy or system center)
+    void setTarget( const QVector &center );      // orbit target (galaxy or system center)
 
     // Auto-frame: set the orbit distance so the given extent (half-widths of the
     // bounding box) fits the viewport at the given vertical fov (radians).
-    void setDistanceFromExtent( float halfx, float halfy, float halfz, float fov_rad );
+    void setDistanceFromExtent( double halfx, double halfy, double halfz, float fov_rad );
 
     // Top-down mode: snap the camera to look straight down the given world axis
     // (0=X, 1=Y, 2=Z), aimed at the target. Each call is a fresh top-down snap.
@@ -44,7 +48,7 @@ public:
     // Project a world point to screen space. Returns true if it's in front of
     // the camera. On success fills sx, sy (HUD coords, roughly -1..1) and
     // sscale (a perspective size factor, 1.0 at the target distance).
-    bool project( const Vector &world, float &sx, float &sy, float &sscale ) const;
+    bool project( const QVector &world, float &sx, float &sy, float &sscale ) const;
 
     // Interaction helpers (call from the nav input handler)
     void orbitBy( float dyaw, float dpitch );     // 3D rotate (left-drag)
@@ -56,17 +60,17 @@ public:
     float pitch() const { return pitch_; }
     float distance() const { return distance_; }
     float roll() const { return roll_; }
-    const Vector& target() const { return target_; }
+    const QVector& target() const { return target_; }
 
 private:
     // Fill forward (camera->target), right, up for the current view state.
     // Applies roll_ to right/up (spin around the view direction).
-    void computeBasis( Vector &forward, Vector &right, Vector &up ) const;
+    void computeBasis( QVector &forward, QVector &right, QVector &up ) const;
 
     float yaw_, pitch_, distance_, roll_;
     bool  topDown_;
     int   axis_;          // 0=X, 1=Y, 2=Z — which world axis is "down" in top-down
-    Vector target_;
+    QVector target_;
 };
 
 #endif

@@ -147,7 +147,7 @@ void NavigationSystem::DrawSystem()
             maxdist = dists.back();
 
         // Fit the camera so maxdist fits the viewport.
-        systemCam.setTarget( Vector( center.i, center.j, center.k ) );
+        systemCam.setTarget( center );
         systemCam.setDistanceFromExtent( maxdist, maxdist, maxdist, NAV_FIT_FOV );
         systemNeedsRefit = false;
     }
@@ -184,7 +184,7 @@ void NavigationSystem::DrawSystem()
         pos = (*blah)->Position();
 
         float the_x, the_y, sscale, system_item_scale_temp;
-        if ( !systemCam.project( Vector( pos.i, pos.j, pos.k ), the_x, the_y, sscale ) ) {
+        if ( !systemCam.project( pos, the_x, the_y, sscale ) ) {
             ++blah;
             continue;
         }
