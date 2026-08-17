@@ -28,6 +28,8 @@ NavMap::NavMap()
     pitch_    = 0.35f;
     distance_ = 120.0f;
     roll_     = 0.0f;
+    panX_     = 0.0f;
+    panY_     = 0.0f;
     topDown_  = false;
     axis_     = 2;
     target_   = QVector( 0, 0, 0 );
@@ -45,6 +47,8 @@ void NavMap::setCamera( float yaw, float pitch, float distance )
 void NavMap::setTarget( const QVector &center )
 {
     target_ = center;
+    panX_   = 0.0f;      // re-centring on a new pivot clears any pan
+    panY_   = 0.0f;
 }
 
 void NavMap::setDistanceFromExtent( double halfx, double halfy, double halfz, float fov_rad )
@@ -81,12 +85,12 @@ void NavMap::rollBy( float droll )
 
 void NavMap::panBy( float dright, float dup )
 {
-    // Translate the orbit target along the camera's right/up axes — i.e. move
-    // the camera perpendicular to the view without changing direction/distance.
-    QVector forward, right, up;
-    computeBasis( forward, right, up );
-    target_ += right * (dright * distance_ * 0.5);
-    target_ += up    * (dup    * distance_ * 0.5);
+    // Pan is a screen-space translation of the view — it shifts the projected
+    // positions sideways/vertical in HUD units, completely independent of the
+    // orbit target (pivot) and the yaw/pitch rotation. So panning never changes
+    // where the camera points or what it rotates around.
+    panX_ += dright * 0.5f;
+    panY_ += dup    * 0.5f;
 }
 
 void NavMap::zoomBy( float factor )
@@ -161,8 +165,8 @@ bool NavMap::project( const QVector &world, float &sx, float &sy, float &sscale 
     // Perspective: divide by along (distance ahead), scaled so 1.0 is at the
     // target distance. focal ~ distance_ so the target fills a reasonable area.
     double scale = distance_ / along;
-    sx     = (float)( rightAmt * scale / distance_ );   // ~ -0.5..0.5 at target distance
-    sy     = (float)( upAmt    * scale / distance_ );
+    sx     = (float)( rightAmt * scale / distance_ ) + panX_;   // ~ -0.5..0.5 at target distance
+    sy     = (float)( upAmt    * scale / distance_ ) + panY_;
     sscale = (float)scale;                              // 1.0 at the target distance
 
     return true;

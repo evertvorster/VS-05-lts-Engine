@@ -53,7 +53,7 @@ public:
     // Interaction helpers (call from the nav input handler)
     void orbitBy( float dyaw, float dpitch );     // 3D rotate (left-drag)
     void rollBy( float droll );                   // top-down rotate (left-drag in 2D)
-    void panBy( float dright, float dup );        // pan (translate target_ along camera right/up)
+    void panBy( float dright, float dup );        // pan: translate the VIEW sideways/vertical
     void zoomBy( float factor );                  // wheel zoom (move camera forward/back)
 
     float yaw() const { return yaw_; }
@@ -68,6 +68,7 @@ private:
     void computeBasis( QVector &forward, QVector &right, QVector &up ) const;
 
     float yaw_, pitch_, distance_, roll_;
+    float panX_, panY_;   // screen-space pan offset (HUD units) — independent of rotate/zoom
     bool  topDown_;
     int   axis_;          // 0=X, 1=Y, 2=Z — which world axis is "down" in top-down
     QVector target_;
