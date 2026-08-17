@@ -333,6 +333,18 @@ void NavigationSystem::Draw()
     DrawButton( buttonskipby4_5[0], buttonskipby4_5[1], buttonskipby4_5[2], buttonskipby4_5[3], 5, outlinebuttons );
     //**********************************
 
+    // Controls help — a small overlay at the bottom of the nav screen.
+    // (No joystick support yet.)
+    static bool draw_nav_help = XMLSupport::parse_bool( vs_config->getVariable( "graphics", "draw_nav_help", "true" ) );
+    if (draw_nav_help) {
+        float help_y = screenskipby4[2] + 0.06f;
+        GFXColor helpcol( 0.7f, 0.7f, 0.7f, 0.85f );
+        drawdescription( "Mouse:  right-drag = rotate   left/mid-drag = pan   wheel = zoom",
+                         screenskipby4[0]+0.03f, help_y, 0.6f, 0.6f, true, screenoccupation, helpcol );
+        drawdescription( "Keys:   arrows = pan   Shift+arrows = rotate   Alt+up/down = zoom   Alt+left/right = pan",
+                         screenskipby4[0]+0.03f, help_y+0.05f, 0.6f, 0.6f, true, screenoccupation, helpcol );
+    }
+
     //Draw the screen basics
     //**********************************
     DrawCursor( mouse_x_current, mouse_y_current, .1, .2, GFXColor( 1, 1, 1, 0.5 ) );
