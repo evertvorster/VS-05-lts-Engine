@@ -8,11 +8,15 @@
 #include "gfx/masks.h"
 #include "navcomputer.h"
 #include "navpath.h"
+#include "navmap.h"
 #include "gfx/hud.h"
 #include "gnuhash.h"
 
 #define NAVTOTALMESHCOUNT 8     //same as the button count, 1 mesh for screen and 1 per button(1+7)
 #define MAXZOOM 10
+
+// Vertical fov (radians) used when auto-framing a NavMap camera to an extent.
+#define NAV_FIT_FOV 1.0f
 
 void Beautify( string systemfile, string &sector, string &system );
 class NavigationSystem
@@ -148,41 +152,19 @@ private:
     std::vector< unsigned >path;
     class navscreenoccupied*screenoccupation;
     class Mesh*mesh[NAVTOTALMESHCOUNT];
-    int   reverse;
     int   rotations; //tried to change to unsigned but gazillions of comparisons to int crop up --chuck_starchaser
     int   axis;
-    int   configmode;
 
-    float rx;   //galaxy
-    float ry;
-    float rz;
-    float zoom;
-
-    float rx_s; //system
-    float ry_s;
-    float rz_s;
-    float zoom_s;
-
-    float camera_z;
-    float themaxvalue;
-    float zshiftmultiplier;
-    float item_zscalefactor;
     float minimumitemscaledown;
     float maximumitemscaleup;
 
-    enum ViewType {VIEW_2D, VIEW_ORTHO, VIEW_3D, VIEW_MAX};
-    int   system_view;
-    int   galaxy_view;
+    NavMap galaxyCam;    // coherent orbit camera for the galaxy view
+    NavMap systemCam;    // coherent orbit camera for the system view
+    bool  galaxyNeedsRefit;   // re-fit the galaxy camera to its extent next draw
+    bool  systemNeedsRefit;   // re-fit the system camera to its extent next draw
 
     int   path_view;
     enum PathType {PATH_OFF, PATH_ON, PATH_ONLY, PATH_MAXIMUM};
-
-    bool  system_multi_dimensional;
-    bool  galaxy_multi_dimensional;
-
-    float center_x;
-    float center_y;
-    float center_z;
 
     signed int    scrolloffset;
 
@@ -233,8 +215,7 @@ private:
 
 //Drawing helper functions
 //*************************
-    void Adjust3dTransformation( bool three_d, bool is_system_not_galaxy );
-    void ReplaceAxes( QVector &pos );
+    void Adjust3dTransformation( bool is_system_not_galaxy );
     void RecordMinAndMax( const QVector &pos,
                           float &min_x,
                           float &max_x,
@@ -244,41 +225,6 @@ private:
                           float &max_z,
                           float &max_all );
     void DrawOriginOrientationTri( float center_nav_x, float center_nav_y, bool system_not_galaxy );
-
-    float CalculatePerspectiveAdjustment( float &zscale,
-                                          float &zdistance,
-                                          QVector &pos,
-                                          QVector &pos_flat,
-                                          float &system_item_scale_temp,
-                                          bool system_not_galaxy );
-
-    void TranslateCoordinates( QVector &pos,
-                               QVector &pos_flat,
-                               float center_nav_x,
-                               float center_nav_y,
-                               float themaxvalue,
-                               float &zscale,
-                               float &zdistance,
-                               float &the_x,
-                               float &the_y,
-                               float &the_x_flat,
-                               float &the_y_flat,
-                               float &system_item_scale_temp,
-                               bool system_not_galaxy );
-
-    void TranslateAndDisplay( QVector &pos,
-                              QVector &pos_flat,
-                              float center_nav_x,
-                              float center_nav_y,
-                              float themaxvalue,
-                              float &zscale,
-                              float &zdistance,
-                              float &the_x,
-                              float &the_y,
-                              float &system_item_scale_temp,
-                              bool system_not_galaxy );
-
-    void DisplayOrientationLines( float the_x, float the_y, float the_x_flat, float the_y_flat, bool system_not_galaxy );
 
     bool CheckForSelectionQuery();
     void setCurrentSystemIndex( unsigned newSystemIndex );
@@ -314,7 +260,6 @@ public: NavigationSystem();
     bool TestIfInRange( float &x1, float &x2, float &y1, float &y2, float tx, float ty );
     bool TestIfInRangeBlk( float &x1, float &x2, float size, float tx, float ty );
     bool TestIfInRangeRad( float &x, float &y, float size, float tx, float ty );
-    bool ParseFile( string filename );
     bool CheckDraw();
     void DrawSystem();
     void DrawGalaxy();
@@ -352,4 +297,3 @@ public: NavigationSystem();
 };
 
 #endif
-

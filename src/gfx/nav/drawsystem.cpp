@@ -83,12 +83,9 @@ void NavigationSystem::DrawSystem()
     navdrawlist mouselist( 1, screenoccupation, factioncolours );       //lists of items to draw that are in mouse range
 
     QVector     pos;    //item position
-    QVector     pos_flat;       //item position flat on plane
 
-    float zdistance = 0.0;
-    float zscale    = 0.0;
-
-    Adjust3dTransformation( system_view == VIEW_3D, 1 );
+    // Coherent camera model: zoom/pan/rotate through the system NavMap.
+    Adjust3dTransformation( 1 );
     //Set up first item to compare to + centres
     //**********************************
     while ( (*bleh) && ( _Universe->AccessCockpit()->GetParent() != (*bleh) )
@@ -96,99 +93,50 @@ void NavigationSystem::DrawSystem()
         ++bleh;
     if ( !(*bleh) )      //nothing there that's significant, just do it all
         bleh = UniverseUtil::getUnitList();
-    //GET THE POSITION
-    //*************************
-    pos = (*bleh)->Position();
-    ReplaceAxes( pos );
-    //*************************
-
-    //Modify by old rotation amount
-    //*************************
-//if(system_view==VIEW_3D)
-//{
-//pos = dxyz(pos, 0, ry_s, 0);
-//pos = dxyz(pos, rx_s, 0, 0);
-//}
-    //*************************
-
-    float max_x = (float) pos.i;
-    float min_x = (float) pos.i;
-    float max_y = (float) pos.j;
-    float min_y = (float) pos.j;
-    float max_z = (float) pos.k;
-    float min_z = (float) pos.k;
-
-//float themaxvalue = fabs(pos.i);
-    themaxvalue = 0.0;
-
     // Centre the map's content in the FREE area (left screen edge to the button
     // column), not the geometric screen centre (which sits under the buttons).
     float center_nav_x = -0.25f;   // midpoint of [-1, 0.5]; the buttons start at 0.5
     float center_nav_y = ( (screenskipby4[2]+screenskipby4[3])/2 );
     //**********************************
-    //Retrieve unit data min/max
-    //**********************************
-    while (*bleh) {
-        //this goes through one time to get the major components locations, and scales its output appropriately
-        if ( UnitUtil::isSun( *bleh ) ) {
-            ++bleh;
-            continue;
-        }
-        string temp = (*bleh)->name;
+    // Auto-frame the system camera to the current system's significant units
+    // the first time (and whenever the current system changes).
+    if (systemNeedsRefit) {
+        //GET THE POSITION
+        //*************************
         pos = (*bleh)->Position();
-        ReplaceAxes( pos );
-        //Modify by old rotation amount — 3D rotation is now handled by
-        // CalculatePerspectiveAdjustment in TranslateCoordinates; do NOT apply
-        // it here too or the view is double-rotated.
-        //*************************
-//if(system_view==VIEW_3D)
-//{
-//pos = dxyz(pos, 0, ry_s, 0);
-//pos = dxyz(pos, rx_s, 0, 0);
-//}
-        //*************************
-        if ( ( UnitUtil::isSignificant( *bleh ) ) || ( _Universe->AccessCockpit()->GetParent() == (*bleh) ) )
-            RecordMinAndMax( pos, min_x, max_x, min_y, max_y, min_z, max_z, themaxvalue );
-        ++bleh;
+
+        float max_x = (float) pos.i;
+        float min_x = (float) pos.i;
+        float max_y = (float) pos.j;
+        float min_y = (float) pos.j;
+        float max_z = (float) pos.k;
+        float min_z = (float) pos.k;
+
+        //Retrieve unit data min/max
+        //**********************************
+        float max_all = 0.0f;
+        while (*bleh) {
+            //this goes through one time to get the major components locations, and scales its output appropriately
+            if ( UnitUtil::isSun( *bleh ) ) {
+                ++bleh;
+                continue;
+            }
+            pos = (*bleh)->Position();
+            if ( ( UnitUtil::isSignificant( *bleh ) ) || ( _Universe->AccessCockpit()->GetParent() == (*bleh) ) )
+                RecordMinAndMax( pos, min_x, max_x, min_y, max_y, min_z, max_z, max_all );
+            ++bleh;
+        }
+        //**********************************
+
+        Vector center( (min_x+max_x)/2, (min_y+max_y)/2, (min_z+max_z)/2 );
+        float  half_x = 0.5f*(max_x-min_x);
+        float  half_y = 0.5f*(max_y-min_y);
+        float  half_z = 0.5f*(max_z-min_z);
+
+        systemCam.setTarget( center );
+        systemCam.setDistanceFromExtent( half_x, half_y, half_z, NAV_FIT_FOV );
+        systemNeedsRefit = false;
     }
-    //**********************************
-
-    //Find Centers
-    //**********************************
-    center_x     = (min_x+max_x)/2;
-    center_y     = (min_y+max_y)/2;
-    center_z     = (min_z+max_z)/2;
-    //**********************************
-
-    max_x        = 2*max_x-center_x;
-    max_y        = 2*max_y-center_y;
-    max_z        = 2*max_z-center_z;
-    min_x        = 2*min_x-center_x;
-    min_y        = 2*min_y-center_y;
-    min_z        = 2*min_z-center_z;
-
-    themaxvalue *= 2;
-
-//#define SQRT3 1.7320508
-//themaxvalue = sqrt(themaxvalue*themaxvalue + themaxvalue*themaxvalue + themaxvalue*themaxvalue);
-//themaxvalue = SQRT3*themaxvalue;
-
-    //Set Camera Distance
-    //**********************************
-//{
-    float half_x = (max_x-min_x);
-    float half_y = (max_y-min_y);
-    float half_z = (max_z-min_z);
-
-    camera_z = sqrt( (half_x*half_x)+(half_y*half_y)+(half_z*half_z) );
-
-//float halfmax = 0.5*themaxvalue;
-//camera_z = sqrt( (halfmax*halfmax) + (halfmax*halfmax) + (halfmax*halfmax) );
-//camera_z = 4.0*themaxvalue;
-//}
-
-    //**********************************
-
     DrawOriginOrientationTri( center_nav_x, center_nav_y, 1 );
 
 /*
@@ -204,10 +152,6 @@ void NavigationSystem::DrawSystem()
  *       string mystr4 ("min y "+XMLSupport::tostring (min_y));
  *       UniverseUtil::IOmessage (0,"game","all",mystr4);
  *
- *       string mystrcx ("center x "+XMLSupport::tostring (center_x));
- *       UniverseUtil::IOmessage (0,"game","all",mystrcx);
- *
- *       string mystrcy ("center y "+XMLSupport::tostring (center_y));
  *       UniverseUtil::IOmessage (0,"game","all",mystrcy);
  */
 
@@ -224,22 +168,19 @@ void NavigationSystem::DrawSystem()
         string temp = (*blah)->name;
 
         pos = (*blah)->Position();
-        ReplaceAxes( pos );
 
-        float the_x, the_y, the_x_flat, the_y_flat, system_item_scale_temp;
-        TranslateCoordinates( pos,
-                              pos_flat,
-                              center_nav_x,
-                              center_nav_y,
-                              themaxvalue,
-                              zscale,
-                              zdistance,
-                              the_x,
-                              the_y,
-                              the_x_flat,
-                              the_y_flat,
-                              system_item_scale_temp,
-                              1 );
+        float the_x, the_y, sscale, system_item_scale_temp;
+        if ( !systemCam.project( Vector( pos.i, pos.j, pos.k ), the_x, the_y, sscale ) ) {
+            ++blah;
+            continue;
+        }
+        the_x = center_nav_x + the_x;
+        the_y = center_nav_y + the_y;
+        system_item_scale_temp = sscale;
+        if (system_item_scale_temp > maximumitemscaleup)
+            system_item_scale_temp = maximumitemscaleup;
+        if (system_item_scale_temp < minimumitemscaledown)
+            system_item_scale_temp = minimumitemscaledown;
         //IGNORE OFF SCREEN
         //**********************************
         if ( !TestIfInRange( screenskipby4[0], screenskipby4[1], screenskipby4[2], screenskipby4[3], the_x, the_y ) ) {
@@ -366,7 +307,6 @@ void NavigationSystem::DrawSystem()
         Unit *myunit = (*blah);
 
         ++blah;
-        DisplayOrientationLines( the_x, the_y, the_x_flat, the_y_flat, 1 );
         if (tests_in_range) {
             mouselist.insert( insert_type, insert_size, the_x, the_y, myunit );
         } else {

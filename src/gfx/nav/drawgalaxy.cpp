@@ -754,13 +754,11 @@ void NavigationSystem::DrawGalaxy()
     //***************************
 
     QVector pos;        //item position
-    QVector pos_flat;           //item position flat on plane
 
-    float   zdistance = 0.0;
-    float   zscale    = 1.0;
     int     l;
 
-    Adjust3dTransformation( galaxy_view == VIEW_3D, 0 );
+    // Coherent camera model: zoom/pan/rotate through the galaxy NavMap.
+    Adjust3dTransformation( 0 );
 
     // Centre the map's content in the FREE area (left screen edge to the button
     // column), not the geometric screen centre (which sits under the buttons).
@@ -771,94 +769,45 @@ void NavigationSystem::DrawGalaxy()
     glEnable( GL_ALPHA );
     GFXDisable( LIGHTING );
     GFXBlendMode( SRCALPHA, INVSRCALPHA );
-    if (!camera_z) {
+    // Auto-frame the galaxy camera to the focused system + its neighbours the
+    // first time (and whenever the focus changes). Centres on the focused
+    // system and fits the orbit distance to the extent.
+    if (galaxyNeedsRefit) {
         float max_x = 0.0;
         float min_x = 0.0;
         float max_y = 0.0;
         float min_y = 0.0;
         float max_z = 0.0;
         float min_z = 0.0;
+        Vector center;
 
-//themaxvalue = fabs(pos.i);
-        themaxvalue = 0.0;
+        systemIter.seek( focusedsystemindex );
+        pos = systemIter->Position();
+        center = Vector( pos.i, pos.j, pos.k );
 
-        {
-            {
-                systemIter.seek( focusedsystemindex );
-                pos = systemIter->Position();
-                ReplaceAxes( pos );
-//if(galaxy_view==VIEW_3D){pos = dxyz(pos, 0, ry, 0);pos = dxyz(pos, rx, 0, 0);}
+        max_x = (float) pos.i;
+        min_x = (float) pos.i;
+        max_y = (float) pos.j;
+        min_y = (float) pos.j;
+        max_z = (float) pos.k;
+        min_z = (float) pos.k;
 
-                max_x = (float) pos.i;
-                min_x = (float) pos.i;
-                max_y = (float) pos.j;
-                min_y = (float) pos.j;
-                max_z = (float) pos.k;
-                min_z = (float) pos.k;
-
-                //Find Centers
-                //**********************************
-                //This will use the current system as the center
-                center_x = pos.i;
-                center_y = pos.j;
-                center_z = pos.k;
-                //**********************************
-
-                unsigned destsize = systemIter->GetDestinationSize();
-                if (destsize != 0) {
-                    for (unsigned i = 0; i < destsize; ++i) {
-                        QVector posoth = systemIter[systemIter->GetDestinationIndex( i )].Position();
-                        ReplaceAxes( posoth );
-//if(galaxy_view==VIEW_3D){posoth = dxyz(pos, 0, ry, 0);posoth = dxyz(pos, rx, 0, 0);}
-
-                        RecordMinAndMax( posoth, min_x, max_x, min_y, max_y, min_z, max_z, themaxvalue );
-                    }
-                }
+        unsigned destsize = systemIter->GetDestinationSize();
+        if (destsize != 0) {
+            float max_all = 0.0f;
+            for (unsigned i = 0; i < destsize; ++i) {
+                QVector posoth = systemIter[systemIter->GetDestinationIndex( i )].Position();
+                RecordMinAndMax( posoth, min_x, max_x, min_y, max_y, min_z, max_z, max_all );
             }
         }
 
-        //Find Centers
-        //**********************************
-        //this will make the center be the center of the displayable area.
-//center_x = (min_x + max_x)/2;
-//center_y = (min_y + max_y)/2;
-//center_z = (min_z + max_z)/2;
-        //**********************************
+        float half_x = vsmax( max_x-center.i, center.i-min_x );
+        float half_y = vsmax( max_y-center.j, center.j-min_y );
+        float half_z = vsmax( max_z-center.k, center.k-min_z );
 
-/*	        min_x = (min_x+center_x)/2;
- *               min_y = (min_y+center_y)/2;
- *               min_z = (min_z+center_z)/2;
- *               max_x = (max_x+center_x)/2;
- *               max_y = (max_y+center_y)/2;
- *               max_z = (max_z+center_z)/2;
- */
-        //Set Camera Distance
-        //**********************************
-
-#define SQRT3 1.7320508
-//themaxvalue = sqrt(themaxvalue*themaxvalue + themaxvalue*themaxvalue + themaxvalue*themaxvalue);
-//themaxvalue = SQRT3*themaxvalue;
-
-        themaxvalue *= 3;
-
-        {
-            float half_x = vsmax( max_x-center_x, center_x-min_x );
-            float half_y = vsmax( max_y-center_y, center_y-min_y );
-            float half_z = vsmax( max_z-center_z, center_z-min_z );
-
-//float half_x =(0.5*(max_x - min_x));
-//float half_y =(0.5*(max_y - min_y));
-//float half_z =(0.5*(max_z - min_z));
-
-            camera_z = sqrt( (half_x*half_x)+(half_y*half_y)+(half_z*half_z) );
-
-//float halfmax = 0.5*themaxvalue;
-//camera_z = sqrt( (halfmax*halfmax) + (halfmax*halfmax) + (halfmax*halfmax) );
-//camera_z = 4.0*themaxvalue;
-//camera_z = tihemaxvalue;
-        }
-
-        //**********************************
+        galaxyCam.setTarget( center );
+        galaxyCam.setDistanceFromExtent( half_x, half_y, half_z, NAV_FIT_FOV );
+        galaxyNeedsRefit = false;
     }
     DrawOriginOrientationTri( center_nav_x, center_nav_y, 0 );
 
@@ -881,42 +830,25 @@ void NavigationSystem::DrawGalaxy()
 
         pos = systemIter->Position();
 
-        ReplaceAxes( pos );             //poop
-
-        //Modify by old rotation amount — 3D rotation is now handled by
-        // CalculatePerspectiveAdjustment in TranslateCoordinates; do NOT apply
-        // it here too or the view is double-rotated.
-        //*************************
-//if(galaxy_view==VIEW_3D){pos = dxyz(pos, 0, ry, 0);pos = dxyz(pos, rx, 0, 0);}
-        //*************************
-        //*************************
-
-        GFXColor col    = systemIter->GetColor();
-        float    the_x, the_y, the_x_flat, the_y_flat, system_item_scale_temp;
-        TranslateCoordinates( pos,
-                              pos_flat,
-                              center_nav_x,
-                              center_nav_y,
-                              themaxvalue,
-                              zscale,
-                              zdistance,
-                              the_x,
-                              the_y,
-                              the_x_flat,
-                              the_y_flat,
-                              system_item_scale_temp,
-                              0 );
-        float alphaadd;
-        {
-            float tmp = ( 1-(zoom/MAXZOOM) );
-            alphaadd = (tmp*tmp)-.5;
-//if (alphaadd<=0)
-//alphaadd=0;
-//else
-            alphaadd *= 4;
+        GFXColor col = systemIter->GetColor();
+        float    the_x, the_y, sscale, system_item_scale_temp;
+        if ( !galaxyCam.project( Vector( pos.i, pos.j, pos.k ), the_x, the_y, sscale ) ) {
+            ++systemIter;
+            continue;
         }
-        col.a = (system_item_scale_temp-minimumitemscaledown)/(maximumitemscaleup-minimumitemscaledown)+alphaadd;
-//col.a=GetAlpha(oldpos,center_x,center_y,center_z,zdistance);
+        // Offset the projected point into the free area (left of the buttons).
+        the_x = center_nav_x + the_x;
+        the_y = center_nav_y + the_y;
+
+        // Perspective size factor (1.0 at the target distance) drives the icon
+        // size and a gentle distance fade.
+        system_item_scale_temp = sscale;
+        if (system_item_scale_temp > maximumitemscaleup)
+            system_item_scale_temp = maximumitemscaleup;
+        if (system_item_scale_temp < minimumitemscaledown)
+            system_item_scale_temp = minimumitemscaledown;
+        col.a = (system_item_scale_temp-minimumitemscaledown)/(maximumitemscaleup-minimumitemscaledown);
+        col.a = 0.25f + 0.75f*col.a;
         //IGNORE DIM AND OFF SCREEN SYETEMS
         //**********************************
         if ( (col.a < .05)
@@ -964,10 +896,6 @@ void NavigationSystem::DrawGalaxy()
         DrawNode( insert_type, insert_size, the_x, the_y,
                   (*systemIter).GetName(), screenoccupation, moused, isPath ? pathcol : col, false, false,
                   isPath ? "" : csector );
-        if (std::fabs(zdistance) < 2.0f * camera_z)
-        {
-            DisplayOrientationLines( the_x, the_y, the_x_flat, the_y_flat, 0 );
-        }
         if ( TestIfInRangeRad( the_x, the_y, insert_size, mouse_x_current, mouse_y_current ) ) {
             mouselist.push_back( systemdrawnode( insert_type, insert_size, the_x, the_y, (*systemIter).GetName(),
                                                  systemIter.getIndex(), screenoccupation, false, isPath ? pathcol : col ) );
@@ -983,29 +911,20 @@ void NavigationSystem::DrawGalaxy()
             for (unsigned i = 0; i < destsize; ++i) {
                 CachedSystemIterator::SystemInfo &oth = systemIter[systemIter->GetDestinationIndex( i )];
                 if ( oth.isDrawable() ) {
-                    QVector posoth    = oth.Position();
-                    ReplaceAxes( posoth );
+                    QVector posoth = oth.Position();
 
-                    float   the_new_x, the_new_y, new_system_item_scale_temp, the_new_x_flat, the_new_y_flat;
-                    //WARNING: SOME VARIABLES FOR ORIGINAL SYSTEM MAY BE MODIFIED HERE!!!
-                    TranslateCoordinates( posoth,
-                                          pos_flat,
-                                          center_nav_x,
-                                          center_nav_y,
-                                          themaxvalue,
-                                          zscale,
-                                          zdistance,
-                                          the_new_x,
-                                          the_new_y,
-                                          the_new_x_flat,
-                                          the_new_y_flat,
-                                          new_system_item_scale_temp,
-                                          0 );
+                    float the_new_x, the_new_y, oth_sscale, oth_item_scale;
+                    if ( !galaxyCam.project( Vector( posoth.i, posoth.j, posoth.k ), the_new_x, the_new_y, oth_sscale ) )
+                        continue;
+                    the_new_x = center_nav_x + the_new_x;
+                    the_new_y = center_nav_y + the_new_y;
+                    oth_item_scale = oth_sscale;
+                    if (oth_item_scale > maximumitemscaleup)
+                        oth_item_scale = maximumitemscaleup;
+                    if (oth_item_scale < minimumitemscaledown)
+                        oth_item_scale = minimumitemscaledown;
                     GFXColor othcol = oth.GetColor();
-                    othcol.a =
-                        (new_system_item_scale_temp
-                         -minimumitemscaledown)/(maximumitemscaleup-minimumitemscaledown)+alphaadd;
-                    //GetAlpha(oldposoth,center_x,center_y,center_z,zdistance);
+                    othcol.a = 0.25f + 0.75f*(oth_item_scale-minimumitemscaledown)/(maximumitemscaleup-minimumitemscaledown);
                     IntersectBorder( the_new_x, the_new_y, the_x, the_y );
 
                     bool isConnectionPath = false;

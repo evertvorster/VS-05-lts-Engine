@@ -56,6 +56,7 @@ public:
     float pitch() const { return pitch_; }
     float distance() const { return distance_; }
     float roll() const { return roll_; }
+    const Vector& target() const { return target_; }
 
 private:
     // Fill forward (camera->target), right, up for the current view state.
