@@ -353,10 +353,13 @@ void NavigationSystem::DrawSystem()
     }
 
     // Apply the orbit pivot: rotate/zoom around the largest significant object
-    // in the middle third of the screen, keeping it steady. Only re-target when
-    // a new valid pivot is found, so the camera isn't yanked when the object
-    // leaves the middle third.
-    if (pivotBest && pivotBest != navPivotUnit) {
+    // in the middle third of the screen, keeping it steady. Re-target ONLY when
+    // no mouse button is held (i.e. not mid-drag): during a pan or rotate the
+    // camera must stay put — pan just translates the view, rotate orbits the
+    // current pivot. Re-snapping mid-pan is what made the view jump as objects
+    // entered the middle third.
+    bool dragging = (mouse_previous_state[0] || mouse_previous_state[1] || mouse_previous_state[2]);
+    if (!dragging && pivotBest && pivotBest != navPivotUnit) {
         navPivotUnit = pivotBest;
         systemCam.setTarget( pivotBest->Position() );
     }
