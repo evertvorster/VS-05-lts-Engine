@@ -1,4 +1,6 @@
 #include <set>
+#include <vector>
+#include <algorithm>
 #include "vsfilesystem.h"
 #include "vs_globals.h"
 #include "vegastrike.h"
@@ -100,54 +102,53 @@ void NavigationSystem::DrawSystem()
     //**********************************
     // Auto-frame the system camera to the current system's significant units
     // the first time (and whenever the current system changes).
+    //
+    // Outlier-robust: the old code centred on the min/max box midpoint, which a
+    // single far unit (e.g. a jump gate or a distant moon) could yank far from
+    // the actual cluster, leaving the interesting units tiny or off-screen. We
+    // centre on the player's ship (the natural focus) and frame to the cluster
+    // of significant units near it, rejecting far outliers.
     if (systemNeedsRefit) {
-        //GET THE POSITION
-        //*************************
-        pos = (*bleh)->Position();
-
-        float max_x = (float) pos.i;
-        float min_x = (float) pos.i;
-        float max_y = (float) pos.j;
-        float min_y = (float) pos.j;
-        float max_z = (float) pos.k;
-        float min_z = (float) pos.k;
-
-        //Retrieve unit data min/max
-        //**********************************
-        float max_all = 0.0f;
-        while (*bleh) {
-            //this goes through one time to get the major components locations, and scales its output appropriately
-            if ( UnitUtil::isSun( *bleh ) ) {
-                ++bleh;
+        // Collect significant (non-sun) unit positions; keep the player.
+        Unit *player = _Universe->AccessCockpit()->GetParent();
+        std::vector< QVector > pts;
+        for (un_iter u = UniverseUtil::getUnitList(); (*u); ++u) {
+            if ( UnitUtil::isSun( *u ) )
                 continue;
-            }
-            pos = (*bleh)->Position();
-            if ( ( UnitUtil::isSignificant( *bleh ) ) || ( _Universe->AccessCockpit()->GetParent() == (*bleh) ) )
-                RecordMinAndMax( pos, min_x, max_x, min_y, max_y, min_z, max_z, max_all );
-            ++bleh;
+            if ( UnitUtil::isSignificant( *u ) || (player == (*u)) )
+                pts.push_back( (*u)->Position() );
         }
-        //**********************************
+        if (pts.empty())
+            pts.push_back( Vector( 0, 0, 0 ) );
 
-        Vector center( (min_x+max_x)/2, (min_y+max_y)/2, (min_z+max_z)/2 );
-        float  half_x = 0.5f*(max_x-min_x);
-        float  half_y = 0.5f*(max_y-min_y);
-        float  half_z = 0.5f*(max_z-min_z);
-
-        // DEBUG: dump fit + first unit positions to understand the broken system view
-        {
-            fprintf( stderr, "[NAVSYS-FIT] min=(%.0f,%.0f,%.0f) max=(%.0f,%.0f,%.0f) center=(%.0f,%.0f,%.0f) half=(%.1f,%.1f,%.1f)\n",
-                     min_x, min_y, min_z, max_x, max_y, max_z,
-                     center.i, center.j, center.k, half_x, half_y, half_z );
-            int dbg = 0;
-            for (un_iter d = UniverseUtil::getUnitList(); (*d) && dbg < 5; ++d, ++dbg) {
-                QVector p = (*d)->Position();
-                fprintf( stderr, "  unit pos=(%.1f,%.1f,%.1f) type=%d\n",
-                         p.i, p.j, p.k, (int)(*d)->isUnit() );
-            }
+        // Center on the player when present, else the mean of the cluster.
+        QVector center = player ? player->Position() : QVector( 0, 0, 0 );
+        if (!player) {
+            for (size_t i = 0; i < pts.size(); ++i)
+                center += pts[i];
+            center = center / double(pts.size());
         }
 
-        systemCam.setTarget( center );
-        systemCam.setDistanceFromExtent( half_x, half_y, half_z, NAV_FIT_FOV );
+        // Extent = spread of significant units, rejecting any unit farther than
+        // 3x the median distance from the centre (a robust cluster estimator).
+        std::vector< float > dists;
+        for (size_t i = 0; i < pts.size(); ++i)
+            dists.push_back( (pts[i]-center).Magnitude() );
+        std::sort( dists.begin(), dists.end() );
+        float median = dists[ dists.size()/2 ];
+        float maxdist = 0.0f;
+        for (size_t i = 0; i < pts.size(); ++i) {
+            float d = dists[i];
+            if (d <= 3.0f*median)
+                if (d > maxdist)
+                    maxdist = d;
+        }
+        if (maxdist <= 0.0f)
+            maxdist = dists.back();
+
+        // Fit the camera so maxdist fits the viewport.
+        systemCam.setTarget( Vector( center.i, center.j, center.k ) );
+        systemCam.setDistanceFromExtent( maxdist, maxdist, maxdist, NAV_FIT_FOV );
         systemNeedsRefit = false;
     }
     DrawOriginOrientationTri( center_nav_x, center_nav_y, 1 );

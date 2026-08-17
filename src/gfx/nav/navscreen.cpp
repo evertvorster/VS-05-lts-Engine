@@ -1267,13 +1267,15 @@ void NavigationSystem::Adjust3dTransformation( bool system_vs_galaxy )
         return;
 
     // ROTATE on left (button 1) drag — orbit (3D) or roll (top-down).
+    // Sensitivity tuned for the normalised mouse deltas (~[-1,1] across the
+    // screen): 0.2 rad per full-screen drag. Bumped 10x from 0.02 per play-test.
     if ( mouse_previous_state[0] == 1 ) {
         float ndx = (mouse_x_current-mouse_x_previous);
         float ndy = (mouse_y_current-mouse_y_previous);
         if (cam.topDown()) {
-            cam.rollBy( ndx*0.02f );        // top-down: spin the map in its own plane
+            cam.rollBy( ndx*0.2f );        // top-down: spin the map in its own plane
         } else {
-            cam.orbitBy( ndx*0.02f, ndy*0.02f );
+            cam.orbitBy( ndx*0.2f, ndy*0.2f );
         }
     }
 
