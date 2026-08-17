@@ -283,6 +283,10 @@ public: NavigationSystem();
     void ClearPriorities();
     void updatePath();
 
+    // Drive the active view's camera with an arrow key. dir: 0=up,1=down,
+    // 2=left,3=right. mods: KB_MOD_* (Shift=rotate, Alt=zoom/pan, none=pan).
+    void arrowKey( int dir, unsigned int mods );
+
     void scroll( signed int scrollamt )
     {
         scrolloffset += scrollamt;

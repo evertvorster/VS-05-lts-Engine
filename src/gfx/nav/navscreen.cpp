@@ -1227,6 +1227,45 @@ void NavigationSystem::Adjust3dTransformation( bool system_vs_galaxy )
     //**********************************
 }
 
+void NavigationSystem::arrowKey( int dir, unsigned int mods )
+{
+    // Keyboard camera control, active only while the nav is open (the caller
+    // gates the ship handlers). Drives the active view's camera.
+    //   plain          = pan (strafe the camera right/up)
+    //   Shift          = rotate (yaw/pitch, look around)
+    //   Alt+up/down    = zoom forward/back
+    //   Alt+left/right = pan sideways
+    // Step scales with navNearDist so movement is fast in empty space and fine
+    // near objects, matching the mouse.
+    NavMap &cam = checkbit( whattodraw, 2 ) ? galaxyCam : systemCam;
+
+    bool shift = (mods & KB_MOD_SHIFT) != 0;
+    bool alt   = (mods & KB_MOD_ALT)   != 0;
+
+    // Up/down (dir 0/1) vs left/right (dir 2/3).
+    double step = navNearDist * 0.5;
+    if (shift) {
+        // Rotate: up/down = pitch, left/right = yaw.
+        float amt = 0.05f;
+        if (dir == 0)      cam.orbitBy( 0,  amt );      // up   = look up
+        else if (dir == 1) cam.orbitBy( 0, -amt );      // down = look down
+        else if (dir == 2) cam.orbitBy( amt, 0 );       // left = look left
+        else               cam.orbitBy( -amt, 0 );      // right= look right
+    } else if (alt) {
+        if (dir == 0)      cam.zoomBy(  step );          // Alt+up   = zoom in
+        else if (dir == 1) cam.zoomBy( -step );          // Alt+down = zoom out
+        else if (dir == 2) cam.panBy( -step, 0 );        // Alt+left = pan left
+        else               cam.panBy(  step, 0 );        // Alt+right= pan right
+    } else {
+        // Pan (strafe the camera). left/right along camera right; up/down along
+        // camera up.
+        if (dir == 0)      cam.panBy( 0,  step );        // up   = move up
+        else if (dir == 1) cam.panBy( 0, -step );        // down = move down
+        else if (dir == 2) cam.panBy( -step, 0 );        // left = move left
+        else               cam.panBy(  step, 0 );        // right= move right
+    }
+}
+
 void NavigationSystem::RecordMinAndMax( const QVector &pos,
                                         float &min_x,
                                         float &max_x,
