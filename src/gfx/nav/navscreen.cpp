@@ -98,11 +98,10 @@ void NavigationSystem::Setup()
     maximumitemscaleup   = 3.0;
 
     // Coherent camera model: one NavMap orbit camera per view. Start both in
-    // top-down (2D) down the Z axis — the classic flat map — and let the user
-    // toggle to 3D orbit via the 2D/3D button.
+    // 3D orbit (the default view). The 2D/3D button toggles to top-down.
     axis = 2;                        // 0=X, 1=Y, 2=Z
-    galaxyCam.setTopDown( true, axis );
-    systemCam.setTopDown( true, axis );
+    galaxyCam.setTopDown( false, axis );
+    systemCam.setTopDown( false, axis );
     galaxyNeedsRefit = true;         // re-fit to extent on first draw
     systemNeedsRefit = true;
 
@@ -144,6 +143,7 @@ void NavigationSystem::Setup()
     else
         whattodraw = (1|2);
     currentselection = NULL;
+    navPivotUnit     = NULL;
     factioncolours   = new GFXColor[FactionUtil::GetNumFactions()];
     unselectedalpha  = 1.0;
 

@@ -151,6 +151,23 @@ void NavigationSystem::DrawSystem()
         systemCam.setDistanceFromExtent( maxdist, maxdist, maxdist, NAV_FIT_FOV );
         systemNeedsRefit = false;
     }
+    // Orbit pivot: rotate/zoom around the significant object currently in view
+    // (planets, stations/bases, jump points — the same set 'n' cycles). If the
+    // player has such an object targeted, pivot the camera on it; otherwise
+    // pivot on the player's position (the fit centre). Only re-target when the
+    // player isn't mid-drag, so an in-progress pan/orbit isn't yanked.
+    {
+        Unit *pivot = NULL;
+        Unit *pl    = _Universe->AccessCockpit()->GetParent();
+        Unit *tgt   = pl ? pl->Target() : NULL;
+        if (tgt && UnitUtil::isSignificant( tgt ) && !UnitUtil::isSun( tgt ))
+            pivot = tgt;
+        if (pivot != navPivotUnit) {
+            navPivotUnit = pivot;
+            if (pivot)
+                systemCam.setTarget( pivot->Position() );
+        }
+    }
     DrawOriginOrientationTri( center_nav_x, center_nav_y, 1 );
 
 /*
@@ -170,6 +187,12 @@ void NavigationSystem::DrawSystem()
  */
 
     Unit *ThePlayer = ( UniverseUtil::getPlayerX( UniverseUtil::getCurrentPlayer() ) );
+
+    // Buffer for drawn items, so overlapping clusters can be collapsed to the
+    // largest object before drawing (instead of an expanding label list).
+    struct NavItem { int type; float size, x, y; Unit *unit; };
+    std::vector< NavItem > drawn;
+    drawn.reserve( 64 );
 
     //Enlist the items and attributes
     //**********************************
@@ -307,39 +330,76 @@ void NavigationSystem::DrawSystem()
         // zoomed out to a huge extent (e.g. two clusters far apart in a system).
         if (insert_size < NavMinItemSize())
             insert_size = NavMinItemSize();
-        if ( _Universe->AccessCockpit()->GetParent()->Target() == (*blah) ) {
-            //Get a color from the config
+        Unit *myunit = (*blah);
+        // Buffer this drawable item. Overlapping clusters are collapsed to the
+        // largest object after the loop (the player is always drawn), instead of
+        // spreading into an expanding label list.
+        NavItem item;
+        item.type = insert_type;
+        item.size = insert_size;
+        item.x    = the_x;
+        item.y    = the_y;
+        item.unit = myunit;
+        drawn.push_back( item );
+
+        ++blah;
+    }
+
+    // Collapse overlapping items: when several objects project to nearly the
+    // same screen position, keep only the largest. The player (and the unit
+    // currently under the mouse, for click-select) are always kept.
+    for (size_t i = 0; i < drawn.size(); ++i) {
+        if (drawn[i].size < 0)            // already collapsed away
+            continue;
+        bool isPlayer = drawn[i].unit && UnitUtil::isPlayerStarship( drawn[i].unit ) > -1;
+        bool underMouse = TestIfInRangeRad( drawn[i].x, drawn[i].y, drawn[i].size,
+                                            mouse_x_current, mouse_y_current );
+        if (isPlayer || underMouse)
+            continue;
+        for (size_t j = 0; j < drawn.size(); ++j) {
+            if (i == j || drawn[j].size < 0)
+                continue;
+            float dx = drawn[i].x - drawn[j].x;
+            float dy = drawn[i].y - drawn[j].y;
+            float rr = 0.5f*(drawn[i].size + drawn[j].size);
+            if (dx*dx + dy*dy < rr*rr) {
+                // Overlapping — keep the larger, drop the smaller.
+                if (drawn[i].size < drawn[j].size)
+                    { drawn[i].size = -1; break; }
+            }
+        }
+    }
+    // Draw the survivors.
+    for (size_t i = 0; i < drawn.size(); ++i) {
+        if (drawn[i].size < 0)
+            continue;
+        NavItem &it = drawn[i];
+        if ( _Universe->AccessCockpit()->GetParent()->Target() == it.unit ) {
             static float col[4] = {1, 0.3, 0.3, 0.8};
             static bool  init   = false;
             if (!init) {
                 vs_config->getColor( "nav", "targeted_unit", col, true );
                 init = true;
             }
-            DrawTargetCorners( the_x, the_y, insert_size, GFXColor( col[0], col[1], col[2], col[3] ) );
+            DrawTargetCorners( it.x, it.y, it.size, GFXColor( col[0], col[1], col[2], col[3] ) );
         }
-        bool tests_in_range = 0;
-        if (insert_type == navstation)
-            tests_in_range = TestIfInRangeBlk( the_x, the_y, insert_size, mouse_x_current, mouse_y_current );
-        else
-            tests_in_range = TestIfInRangeRad( the_x, the_y, insert_size, mouse_x_current, mouse_y_current );
-        Unit *myunit = (*blah);
-
-        ++blah;
+        bool tests_in_range = TestIfInRangeRad( it.x, it.y, it.size, mouse_x_current, mouse_y_current );
         if (tests_in_range) {
-            mouselist.insert( insert_type, insert_size, the_x, the_y, myunit );
+            mouselist.insert( it.type, it.size, it.x, it.y, it.unit );
         } else {
-            drawlistitem( insert_type,
-                          insert_size,
-                          the_x,
-                          the_y,
-                          myunit,
+            drawlistitem( it.type,
+                          it.size,
+                          it.x,
+                          it.y,
+                          it.unit,
                           screenoccupation,
                           false,
-                          (*blah) ? true : false,
+                          false,
                           unselectedalpha,
                           factioncolours );
         }
     }
+    drawn.clear();
     //**********************************	//	done enlisting items and attributes
     //Adjust mouse list for 'n' kliks
     //**********************************

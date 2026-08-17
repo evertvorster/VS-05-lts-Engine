@@ -18,8 +18,9 @@ static const double HALFPI   = 0.5 * PI;
 static const double POLE_EPS = 0.05;
 
 // Upper bound on the orbit distance (zoom-out). A sector is huge (units at
-// ~1e11); allow ~1e12 so the whole thing frames. Increase if a bigger galaxy.
-static const double MAX_DIST = 1e12;
+// ~1e11, light-minutes apart) and the galaxy vaster still; allow ~1e15 so the
+// whole thing frames. Increase if a bigger universe.
+static const double MAX_DIST = 1e15;
 
 NavMap::NavMap()
 {
