@@ -67,7 +67,7 @@ void NavigationSystem::DrawSystem()
     //int length = systemnamestring.size();
     //float offset = (float(length)*0.001);
     //systemname.SetPos( (((screenskipby4[0]+screenskipby4[1])/2)-offset) , screenskipby4[3]); // middle position
-    systemname.SetPos( screenskipby4[0]+0.03, screenskipby4[3]+0.02 );     //left position
+    systemname.SetPos( screenskipby4[0]+0.03, 0.96f );     //left position, inset below the top edge
     systemname.col = GFXColor( 1, 1, .7, 1 );
     systemname.SetText( systemnamestring );
 //systemname.SetCharSize(1, 1);
@@ -352,6 +352,11 @@ void NavigationSystem::DrawSystem()
     // Collapse overlapping items: when several objects project to nearly the
     // same screen position, keep only the largest. The player (and the unit
     // currently under the mouse, for click-select) are always kept.
+    //
+    // The region radius is larger than the icon overlap so objects clustered in
+    // a region collapse to a single marker instead of each drawing a label that
+    // stacks into a long list (the old findfreesector label-spread behaviour).
+    const float CLUSTER_RAD = 0.05f;   // HUD units (~2.5% of half-screen)
     for (size_t i = 0; i < drawn.size(); ++i) {
         if (drawn[i].size < 0)            // already collapsed away
             continue;
@@ -365,9 +370,9 @@ void NavigationSystem::DrawSystem()
                 continue;
             float dx = drawn[i].x - drawn[j].x;
             float dy = drawn[i].y - drawn[j].y;
-            float rr = 0.5f*(drawn[i].size + drawn[j].size);
+            float rr = CLUSTER_RAD;
             if (dx*dx + dy*dy < rr*rr) {
-                // Overlapping — keep the larger, drop the smaller.
+                // Same region — keep the larger, drop the smaller.
                 if (drawn[i].size < drawn[j].size)
                     { drawn[i].size = -1; break; }
             }
