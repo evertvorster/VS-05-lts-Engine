@@ -43,37 +43,6 @@ void NavigationSystem::DrawCursor( float x, float y, float wid, float hei, const
 
 //This draws the grid over the nav screen area
 //**********************************
-void NavigationSystem::DrawGrid( float &x1, float &x2, float &y1, float &y2, const GFXColor &col )
-{
-    static bool draw_grid = XMLSupport::parse_bool( vs_config->getVariable( "graphics", "hud", "draw_nav_grid", "true" ) );
-    if (!draw_grid)
-        return;
-    GFXColorf( col );
-    GFXDisable( TEXTURE0 );
-    GFXDisable( LIGHTING );
-    GFXBlendMode( SRCALPHA, INVSRCALPHA );
-
-    float deltax = x2-x1;
-    deltax = deltax/10;
-    float deltay = y2-y1;
-    deltay = deltay/10;
-
-    static VertexBuilder<> verts;
-    verts.clear();
-    for (int i = 1; i < 10; i++) {
-        verts.insert(x1+i*deltax, y1, 0);
-        verts.insert(x1+i*deltax, y2, 0);
-    }
-    for (int i = 1; i < 10; i++) {
-        verts.insert(x1, y1+i*deltay, 0);
-        verts.insert(x2, y1+i*deltay, 0);
-    }
-    GFXDraw( GFXLINE, verts );
-
-    GFXEnable( TEXTURE0 );
-}
-//**********************************
-
 //This will draw a circle over the screen
 //**********************************
 void NavigationSystem::DrawCircle( float x, float y, float size, const GFXColor &col )

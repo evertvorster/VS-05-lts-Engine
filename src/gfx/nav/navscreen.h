@@ -164,7 +164,6 @@ private:
     class navscreenoccupied*screenoccupation;
     class Mesh*mesh[NAVTOTALMESHCOUNT];
     int   rotations; //tried to change to unsigned but gazillions of comparisons to int crop up --chuck_starchaser
-    int   axis;
 
     float minimumitemscaledown;
     float maximumitemscaleup;
@@ -213,8 +212,6 @@ private:
     float     buttonskipby4_3[4];
     float     buttonskipby4_4[4];
     float     buttonskipby4_5[4];
-    float     buttonskipby4_6[4];
-    float     buttonskipby4_7[4];
     TextPlane screen_objectives;
     float     meshcoordinate_x[NAVTOTALMESHCOUNT];
     float     meshcoordinate_y[NAVTOTALMESHCOUNT];
@@ -266,7 +263,6 @@ public: NavigationSystem();
     void DrawButton( float &x1, float &x2, float &y1, float &y2, int button_number, bool outline );
     void DrawButtonOutline( float &x1, float &x2, float &y1, float &y2, const GFXColor &col );
     void DrawCursor( float x, float y, float wid, float hei, const GFXColor &col );
-    void DrawGrid( float &screen_x1, float &screen_x2, float &screen_y1, float &screen_y2, const GFXColor &col );
 
     bool TestIfInRange( float &x1, float &x2, float &y1, float &y2, float tx, float ty );
     bool TestIfInRangeBlk( float &x1, float &x2, float size, float tx, float ty );

@@ -97,11 +97,8 @@ void NavigationSystem::Setup()
     minimumitemscaledown = 0.2;
     maximumitemscaleup   = 3.0;
 
-    // Coherent camera model: one NavMap orbit camera per view. Start both in
-    // 3D orbit (the default view). The 2D/3D button toggles to top-down.
-    axis = 2;                        // 0=X, 1=Y, 2=Z
-    galaxyCam.setTopDown( false, axis );
-    systemCam.setTopDown( false, axis );
+    // Coherent camera model: one free-fly NavMap camera per view. Start in 3D
+    // orbit (the only view).
     galaxyNeedsRefit = true;         // re-fit to extent on first draw
     systemNeedsRefit = true;
 
@@ -202,16 +199,6 @@ void NavigationSystem::Setup()
     buttonskipby4_5[1] = .95;
     buttonskipby4_5[2] = .45;
     buttonskipby4_5[3] = .50;
-
-    buttonskipby4_6[0] = .75;
-    buttonskipby4_6[1] = .95;
-    buttonskipby4_6[2] = .35;
-    buttonskipby4_6[3] = .40;
-
-    buttonskipby4_7[0] = .75;
-    buttonskipby4_7[1] = .95;
-    buttonskipby4_7[2] = .25;
-    buttonskipby4_7[3] = .30;
     // No navdata.xml — the map region and button layout are fixed in C++ above.
     ScreenToCoord( screenskipby4[0] );
     ScreenToCoord( screenskipby4[1] );
@@ -242,16 +229,6 @@ void NavigationSystem::Setup()
     ScreenToCoord( buttonskipby4_5[1] );
     ScreenToCoord( buttonskipby4_5[2] );
     ScreenToCoord( buttonskipby4_5[3] );
-
-    ScreenToCoord( buttonskipby4_6[0] );
-    ScreenToCoord( buttonskipby4_6[1] );
-    ScreenToCoord( buttonskipby4_6[2] );
-    ScreenToCoord( buttonskipby4_6[3] );
-
-    ScreenToCoord( buttonskipby4_7[0] );
-    ScreenToCoord( buttonskipby4_7[1] );
-    ScreenToCoord( buttonskipby4_7[2] );
-    ScreenToCoord( buttonskipby4_7[3] );
 
 //reverse = XMLSupport::parse_bool (vs_config->getVariable ("joystick","reverse_mouse_spr","true"))?1:-1;
 
@@ -330,14 +307,8 @@ void NavigationSystem::Draw()
     //**********************************
     if ( checkbit( whattodraw, 1 ) ) {
         if ( checkbit( whattodraw, 2 ) ) {
-            if (galaxyCam.topDown()) {
-                DrawGrid( screenskipby4[0], screenskipby4[1], screenskipby4[2], screenskipby4[3], GFXColor( 1, 1, 1, 0.2 ) );
-            }
             DrawGalaxy();
         } else {
-            if (systemCam.topDown()) {
-                DrawGrid( screenskipby4[0], screenskipby4[1], screenskipby4[2], screenskipby4[3], GFXColor( 1, 1, 1, 0.2 ) );
-            }
             DrawSystem();
         }
     } else {
@@ -360,8 +331,6 @@ void NavigationSystem::Draw()
     DrawButton( buttonskipby4_3[0], buttonskipby4_3[1], buttonskipby4_3[2], buttonskipby4_3[3], 3, outlinebuttons );
     DrawButton( buttonskipby4_4[0], buttonskipby4_4[1], buttonskipby4_4[2], buttonskipby4_4[3], 4, outlinebuttons );
     DrawButton( buttonskipby4_5[0], buttonskipby4_5[1], buttonskipby4_5[2], buttonskipby4_5[3], 5, outlinebuttons );
-    DrawButton( buttonskipby4_6[0], buttonskipby4_6[1], buttonskipby4_6[2], buttonskipby4_6[3], 6, outlinebuttons );
-    DrawButton( buttonskipby4_7[0], buttonskipby4_7[1], buttonskipby4_7[2], buttonskipby4_7[3], 7, outlinebuttons );
     //**********************************
 
     //Draw the screen basics
@@ -859,8 +828,6 @@ void NavigationSystem::DrawButton( float &x1, float &x2, float &y1, float &y2, i
         label = "Nav/Info";
     } else if (button_number == 3) {
         label = "Target Selected";
-    } else if (button_number == 7) {
-        label = "2D/3D";
     } else if ( checkbit( whattodraw, 1 ) ) {
         if (button_number == 2)
             label = "Path On/Off/Only";
@@ -868,8 +835,6 @@ void NavigationSystem::DrawButton( float &x1, float &x2, float &y1, float &y2, i
             label = "Up";
         else if (button_number == 5)
             label = "Down";
-        else if (button_number == 6)
-            label = "Axis";
     } else {
         if (button_number == 2)
             label = "Sectors";
@@ -877,8 +842,6 @@ void NavigationSystem::DrawButton( float &x1, float &x2, float &y1, float &y2, i
             label = "Ship";
         else if (button_number == 5)
             label = "Mission";
-        else if (button_number == 6)
-            label = "Nav Comp";
     }
     TextPlane   a_label;
     a_label.col = GFXColor( 1, 1, 1, 1 );
@@ -998,44 +961,7 @@ void NavigationSystem::DrawButton( float &x1, float &x2, float &y1, float &y2, i
         }
         //******************************************************
         //******************************************************
-        //**                 BUTTON 6 FUNCTION                **	AXIS
-        //******************************************************
-        if (button_number == 6) {
-            //releasing #6: cycle the top-down reference axis (X->Y->Z). In
-            //top-down this re-snaps the view down the new axis; in 3D it just
-            //selects the axis the next top-down snap will use.
-            if ( checkbit( whattodraw, 1 ) ) {
-                //if in nav system NOT mission
-                axis = (axis+1)%3;
-                if ( checkbit( whattodraw, 2 ) ) {
-                    if (galaxyCam.topDown())
-                        galaxyCam.setTopDown( true, axis );
-                } else {
-                    if (systemCam.topDown())
-                        systemCam.setTopDown( true, axis );
-                }
-            } else {
-                //if in mission mode
-
-                navcomp->run();
-            }
-        }
-        //******************************************************
-        //******************************************************
-        //**                 BUTTON 7 FUNCTION                **	2D/3D
-        //******************************************************
-        if (button_number == 7) {
-            //releasing #7: toggle top-down (2D) <-> orbit (3D) for the active
-            //view. Every press into 2D is a fresh top-down snap down the
-            //current axis; 3D returns to the orbit camera.
-            if ( checkbit( whattodraw, 1 ) ) {
-                if ( checkbit( whattodraw, 2 ) ) {
-                    galaxyCam.setTopDown( !galaxyCam.topDown(), axis );
-                } else {
-                    systemCam.setTopDown( !systemCam.topDown(), axis );
-                }
-            }
-        }
+        //**                 (BUTTON 6 & 7 REMOVED)          **	2D/3D & AXIS no longer exist
         //******************************************************
     }
     //!!! OUT OF BOUNDS !!!
@@ -1274,11 +1200,7 @@ void NavigationSystem::Adjust3dTransformation( bool system_vs_galaxy )
     if ( mouse_previous_state[2] == 1 ) {
         float ndx = (mouse_x_current-mouse_x_previous);
         float ndy = (mouse_y_current-mouse_y_previous);
-        if (cam.topDown()) {
-            cam.rollBy( ndx*0.6f );        // top-down: spin the map in its own plane
-        } else {
-            cam.orbitBy( ndx*0.6f, -ndy*0.6f );   // y flipped so drag-up looks up
-        }
+        cam.orbitBy( ndx*0.6f, -ndy*0.6f );   // y flipped so drag-up looks up
     }
 
     // PAN on left (button 1) or middle (button 2) drag — strafe the camera

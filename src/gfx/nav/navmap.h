@@ -40,11 +40,6 @@ public:
     // centre. Nominal distance (nomDist_) is recorded for size normalisation.
     void setFraming( const QVector &center, double halfx, double halfy, double halfz, float fov_rad );
 
-    // Top-down mode: snap the camera to look straight down the given world axis
-    // (0=X, 1=Y, 2=Z). Each call is a fresh top-down snap.
-    void setTopDown( bool on, int axis );
-    bool topDown() const { return topDown_; }
-
     // Project a world point to screen space. Returns true if it's in front of
     // the camera. On success fills sx, sy (HUD coords, roughly -1..1) and
     // sscale (a perspective size factor, 1.0 at the nominal distance).
@@ -52,30 +47,25 @@ public:
 
     // Interaction helpers (call from the nav input handler)
     void orbitBy( float dyaw, float dpitch );      // look around (change yaw/pitch)
-    void rollBy( float droll );                    // top-down: spin the view in its plane
     void panBy( float dright, float dup );         // strafe: translate camera right/up
     void zoomBy( float dist );                     // move camera forward by dist (zoom in if >0)
 
     float yaw() const { return yaw_; }
     float pitch() const { return pitch_; }
-    float roll() const { return roll_; }
     float nominalDistance() const { return nomDist_; }
     const QVector& position() const { return pos_; }
 
-    // View direction (unit). For top-down this is the down axis; for 3D it's
-    // from yaw/pitch. Used to test whether an object is in front of the camera.
+    // View direction (unit), from yaw/pitch. Used to test whether an object is
+    // in front of the camera and to find the view focus.
     QVector forward() const;
 
 private:
     // Fill forward (view direction), right, up for the current orientation.
-    // Applies roll_ to right/up (spin around the view direction).
     void computeBasis( QVector &forward, QVector &right, QVector &up ) const;
 
     QVector pos_;          // camera position (world space)
-    float   yaw_, pitch_, roll_;
+    float   yaw_, pitch_;
     float   nomDist_;      // camera-to-centre distance set at auto-frame (for sizing)
-    bool    topDown_;
-    int     axis_;         // 0=X, 1=Y, 2=Z — which world axis is "down" in top-down
 };
 
 #endif

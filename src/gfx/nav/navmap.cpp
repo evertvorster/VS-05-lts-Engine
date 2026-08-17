@@ -22,13 +22,10 @@ static const double MAX_DIST = 1e15;
 
 NavMap::NavMap()
 {
-    yaw_      = -0.6f;
-    pitch_    = 0.35f;
-    roll_     = 0.0f;
-    nomDist_  = 120.0f;
-    topDown_  = false;
-    axis_     = 2;
-    pos_      = QVector( 0, 0, -120 );   // default: a little in front of the origin
+    yaw_     = -0.6f;
+    pitch_   = 0.35f;
+    nomDist_ = 120.0f;
+    pos_     = QVector( 0, 0, -120 );   // default: a little in front of the origin
 }
 
 NavMap::~NavMap() {}
@@ -60,26 +57,12 @@ void NavMap::setFraming( const QVector &center, double halfx, double halfy, doub
     pos_ = center - forward * dist;
 }
 
-void NavMap::setTopDown( bool on, int axis )
-{
-    topDown_ = on;
-    axis_    = on ? axis : axis_;
-    roll_    = 0.0f;      // fresh top-down snap: no residual spin
-}
-
 void NavMap::orbitBy( float dyaw, float dpitch )
 {
-    if (topDown_)
-        return;                 // top-down: rotate via rollBy (spin the view in its plane)
     yaw_   += dyaw;
     pitch_ += dpitch;
     if (pitch_ >  HALFPI - POLE_EPS) pitch_ =  HALFPI - POLE_EPS;
     if (pitch_ < -HALFPI + POLE_EPS) pitch_ = -HALFPI + POLE_EPS;
-}
-
-void NavMap::rollBy( float droll )
-{
-    roll_ += droll;
 }
 
 void NavMap::panBy( float dright, float dup )
@@ -105,13 +88,6 @@ void NavMap::zoomBy( float dist )
 
 QVector NavMap::forward() const
 {
-    if (topDown_) {
-        switch (axis_) {
-        case 0:  return QVector( -1, 0, 0 );
-        case 1:  return QVector( 0, -1, 0 );
-        default: return QVector( 0, 0, -1 );
-        }
-    }
     double cp = std::cos( pitch_ ), sp = std::sin( pitch_ );
     double cy_ = std::cos( yaw_ ),  sy_ = std::sin( yaw_ );
     return QVector( cp * cy_, sp, -cp * sy_ );
@@ -119,45 +95,15 @@ QVector NavMap::forward() const
 
 void NavMap::computeBasis( QVector &forward, QVector &right, QVector &up ) const
 {
-    if (topDown_) {
-        // Camera looks straight down the chosen world axis; right/up span the
-        // plane perpendicular to it. Built directly from the axis so the basis
-        // never degenerates (forward × worldUp would be 0 at the pole).
-        switch (axis_) {
-        case 0:  // down X
-            forward = QVector( -1, 0, 0 );
-            right   = QVector( 0, 0, -1 );
-            up      = QVector( 0, 1, 0 );
-            break;
-        case 1:  // down Y
-            forward = QVector( 0, -1, 0 );
-            right   = QVector( 1, 0, 0 );
-            up      = QVector( 0, 0, 1 );
-            break;
-        default: // down Z
-            forward = QVector( 0, 0, -1 );
-            right   = QVector( 1, 0, 0 );
-            up      = QVector( 0, 1, 0 );
-            break;
-        }
-    } else {
-        // Forward from yaw/pitch, right/up from forward × worldUp.
-        double cp = std::cos( pitch_ ), sp = std::sin( pitch_ );
-        double cy_ = std::cos( yaw_ ),  sy_ = std::sin( yaw_ );
-        forward = QVector( cp * cy_, sp, -cp * sy_ );
-        QVector worldUp( 0, 1, 0 );
-        right = forward.Cross( worldUp );
-        right.Normalize();
-        up = right.Cross( forward );
-        up.Normalize();
-    }
-    // Roll: spin the screen axes around the view direction (top-down rotation).
-    if (roll_ != 0.0f) {
-        double c = std::cos( roll_ ), s = std::sin( roll_ );
-        QVector r = right, u = up;
-        right = r * c + u * s;
-        up    = u * c - r * s;
-    }
+    // Forward from yaw/pitch, right/up from forward × worldUp.
+    double cp = std::cos( pitch_ ), sp = std::sin( pitch_ );
+    double cy_ = std::cos( yaw_ ),  sy_ = std::sin( yaw_ );
+    forward = QVector( cp * cy_, sp, -cp * sy_ );
+    QVector worldUp( 0, 1, 0 );
+    right = forward.Cross( worldUp );
+    right.Normalize();
+    up = right.Cross( forward );
+    up.Normalize();
 }
 
 bool NavMap::project( const QVector &world, float &sx, float &sy, float &sscale ) const
