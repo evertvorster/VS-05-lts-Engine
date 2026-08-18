@@ -172,7 +172,7 @@ void NavigationSystem::DrawSystem()
 
     // Buffer for drawn items, so overlapping clusters can be collapsed to the
     // largest object before drawing (instead of an expanding label list).
-    struct NavItem { int type; float size, x, y; Unit *unit; };
+    struct NavItem { int type; float size, x, y; Unit *unit; double realSize; };
     std::vector< NavItem > drawn;
     drawn.reserve( 64 );
 
@@ -344,6 +344,7 @@ void NavigationSystem::DrawSystem()
         item.x    = the_x;
         item.y    = the_y;
         item.unit = myunit;
+        item.realSize = myunit ? myunit->rSize() : 0.0;   // actual sim size (for collapse ranking)
         drawn.push_back( item );
 
         ++blah;
@@ -355,26 +356,41 @@ void NavigationSystem::DrawSystem()
     //
     // The region radius is larger than the icon overlap so objects clustered in
     // a region collapse to a single marker instead of each drawing a label that
-    // stacks into a long list (the old findfreesector label-spread behaviour).
+    // stacks into a long list. The "largest" is ranked by the object's REAL
+    // simulation size (rSize), not its screen size — screen size is clamped to
+    // the NavMinItemSize floor when zoomed out, so every icon looked equal and
+    // nothing collapsed.
     const float CLUSTER_RAD = 0.05f;   // HUD units (~2.5% of half-screen)
+    auto isKeeper = [&]( const NavItem &it ) {
+        if (it.unit && UnitUtil::isPlayerStarship( it.unit ) > -1)
+            return true;
+        float tx = it.x, ty = it.y;
+        return TestIfInRangeRad( tx, ty, it.size, mouse_x_current, mouse_y_current );
+    };
     for (size_t i = 0; i < drawn.size(); ++i) {
         if (drawn[i].size < 0)            // already collapsed away
             continue;
-        bool isPlayer = drawn[i].unit && UnitUtil::isPlayerStarship( drawn[i].unit ) > -1;
-        bool underMouse = TestIfInRangeRad( drawn[i].x, drawn[i].y, drawn[i].size,
-                                            mouse_x_current, mouse_y_current );
-        if (isPlayer || underMouse)
-            continue;
-        for (size_t j = 0; j < drawn.size(); ++j) {
-            if (i == j || drawn[j].size < 0)
+        for (size_t j = i+1; j < drawn.size(); ++j) {
+            if (drawn[j].size < 0)
                 continue;
             float dx = drawn[i].x - drawn[j].x;
             float dy = drawn[i].y - drawn[j].y;
             float rr = CLUSTER_RAD;
             if (dx*dx + dy*dy < rr*rr) {
-                // Same region — keep the larger, drop the smaller.
-                if (drawn[i].size < drawn[j].size)
-                    { drawn[i].size = -1; break; }
+                bool ki = isKeeper( drawn[i] );
+                bool kj = isKeeper( drawn[j] );
+                if (ki && kj)
+                    continue;                       // keep both (player + hovered)
+                // Keep the object with the LARGER REAL simulation size (rSize),
+                // so a planet wins over an asteroid/fighter. On a tie drop j
+                // (unless j is a keeper). Never drop a keeper.
+                if (drawn[j].realSize > drawn[i].realSize) {
+                    if (!ki) drawn[i].size = -1;    // j bigger, drop i (unless i is a keeper)
+                } else if (drawn[j].realSize == drawn[i].realSize) {
+                    if (!kj) drawn[j].size = -1;    // tie, drop j (unless j is a keeper)
+                } else {
+                    if (!kj) drawn[j].size = -1;    // i bigger, drop j
+                }
             }
         }
     }
