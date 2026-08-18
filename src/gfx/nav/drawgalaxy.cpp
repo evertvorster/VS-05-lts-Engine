@@ -64,20 +64,18 @@ static void DrawNodeDescription( string text,
         XMLSupport::parse_float( vs_config->getVariable( "graphics", "hud", "text_background_alpha", "0.0625" ) );
     int   length = text.size();
     float offset = (float(length)*0.005);
-    // Always draw the label at the object's actual screen position — do NOT
-    // spread labels into a vertical list via findfreesector when objects
-    // cluster. Overlaps are handled by the cluster-collapse pass.
-    {
-        displayname.SetPos( (x_-offset), y_ );
-        displayname.SetText( text );
-        displayname.SetCharSize( size_x, size_y );
+    // Use findfreesector to avoid overlapping labels. The galaxy view labels
+    // only the current system (plus mouse-over), so this stays short.
+    float new_y = screenoccupation->findfreesector( x_, y_ );
+    displayname.SetPos( (x_-offset), new_y );
+    displayname.SetText( text );
+    displayname.SetCharSize( size_x, size_y );
 
-        GFXColor tpbg = displayname.bgcol;
-        bool     automatte = (0 == tpbg.a);
-        if (automatte) displayname.bgcol = GFXColor( 0, 0, 0, background_alpha );
-        displayname.Draw( text, 0, true, false, automatte );
-        displayname.bgcol = tpbg;
-    }
+    GFXColor tpbg = displayname.bgcol;
+    bool     automatte = (0 == tpbg.a);
+    if (automatte) displayname.bgcol = GFXColor( 0, 0, 0, background_alpha );
+    displayname.Draw( text, 0, true, false, automatte );
+    displayname.bgcol = tpbg;
 }
 
 static char GetSystemColor( string source )

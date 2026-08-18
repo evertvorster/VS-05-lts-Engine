@@ -151,16 +151,13 @@ void drawdescription( string text,
 
     int   length = text.size();
     float offset = (float(length)*0.005);
-    // Always draw the label at the object's actual screen position. Do NOT use
-    // findfreesector() to push labels into an expanding vertical list when many
-    // objects cluster — overlapping labels are handled by the cluster-collapse
-    // pass instead. This is what was drawing the super-long lists.
-    {
-        float new_y = y_;
-        displayname.SetPos( (x_-offset), new_y );
-        displayname.SetText( text );
-        displayname.SetCharSize( size_x, size_y );
-    }
+    // Use findfreesector to avoid overlapping labels, but the cluster-collapse
+    // pass already reduces a region to (at most) the largest object + the
+    // player, so this list stays short — no long labels list.
+    float new_y = screenoccupation->findfreesector( x_, y_ );
+    displayname.SetPos( (x_-offset), new_y );
+    displayname.SetText( text );
+    displayname.SetCharSize( size_x, size_y );
     static float background_alpha =
         XMLSupport::parse_float( vs_config->getVariable( "graphics", "hud", "text_background_alpha", "0.0625" ) );
     GFXColor     tpbg = displayname.bgcol;
