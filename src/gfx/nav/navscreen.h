@@ -234,7 +234,6 @@ private:
                           float &min_z,
                           float &max_z,
                           float &max_all );
-    void DrawOriginOrientationTri( float center_nav_x, float center_nav_y, bool system_not_galaxy );
 
     bool CheckForSelectionQuery();
     void setCurrentSystemIndex( unsigned newSystemIndex );

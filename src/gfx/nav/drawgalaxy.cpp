@@ -838,8 +838,6 @@ void NavigationSystem::DrawGalaxy()
         navDrawSet.swap( drawSys );
     }
 
-    DrawOriginOrientationTri( center_nav_x, center_nav_y, 0 );
-
     //Enlist the items and attributes
     //**********************************
     navNearDist = 1e30;   // reset nearest-in-view distance for this frame

@@ -1321,47 +1321,6 @@ void NavigationSystem::RecordMinAndMax( const QVector &pos,
     //**********************************
 }
 
-void NavigationSystem::DrawOriginOrientationTri( float center_nav_x, float center_nav_y, bool system_not_galaxy )
-{
-    // Draw the world X/Y/Z orientation triad at the camera's view focus point
-    // (position + view direction * nominal distance), projected through the
-    // camera. Each axis is drawn from the projected focus to the projected tip.
-    NavMap &cam = system_not_galaxy ? systemCam : galaxyCam;
-    float   len = 0.25f * cam.nominalDistance();
-    // Focus point = camera position + view direction * nominal distance.
-    QVector center = cam.position() + cam.forward() * cam.nominalDistance();
-
-    float cx, cy, css, ax, ay, ass;
-    if ( !cam.project( center, cx, cy, css ) )
-        return;
-    float ox = center_nav_x + cx;
-    float oy = center_nav_y + cy;
-
-    GFXDisable( TEXTURE0 );
-    GFXDisable( LIGHTING );
-    GFXBlendMode( SRCALPHA, INVSRCALPHA );
-
-    // X=red, Y=green, Z=blue
-    const QVector dirs[3] = { QVector( 1, 0, 0 ), QVector( 0, 1, 0 ), QVector( 0, 0, 1 ) };
-    const float  cols[3][4] = { { 1, 0, 0, 0.5f }, { 0, 1, 0, 0.5f }, { 0, 0, 1, 0.5f } };
-    float verts[3*2*(3+4)];
-    int n = 0;
-    for (int i = 0; i < 3; ++i) {
-        if ( cam.project( center + dirs[i]*len, ax, ay, ass ) ) {
-            verts[n*7+0] = ox;              verts[n*7+1] = oy;              verts[n*7+2] = 0;
-            verts[n*7+3] = cols[i][0];      verts[n*7+4] = cols[i][1];      verts[n*7+5] = cols[i][2]; verts[n*7+6] = cols[i][3];
-            ++n;
-            verts[n*7+0] = center_nav_x+ax; verts[n*7+1] = center_nav_y+ay; verts[n*7+2] = 0;
-            verts[n*7+3] = cols[i][0];      verts[n*7+4] = cols[i][1];      verts[n*7+5] = cols[i][2]; verts[n*7+6] = cols[i][3];
-            ++n;
-        }
-    }
-    if (n > 0)
-        GFXDraw( GFXLINE, verts, n, 3, 4 );
-
-    GFXEnable( TEXTURE0 );
-    //**********************************
-}
 
 void Beautify( string systemfile, string &sector, string &system )
 {
