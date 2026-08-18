@@ -194,6 +194,14 @@ void NavigationSystem::DrawSystem()
         }
         the_x = center_nav_x + the_x;
         the_y = center_nav_y + the_y;
+        {
+            // DEBUG: which units reach the draw and their significance
+            bool sig = UnitUtil::isSignificant( *blah );
+            fprintf( stderr, "[NAVDRAW] '%s' isUnit=%d sig=%d fg=%s onscreen=%d\n",
+                     std::string( (*blah)->name.get() ).c_str(), (int)(*blah)->isUnit(), sig,
+                     UnitUtil::getFlightgroupNameCR( *blah ).c_str(),
+                     TestIfInRange( screenskipby4[0], screenskipby4[1], screenskipby4[2], screenskipby4[3], the_x, the_y ) );
+        }
         system_item_scale_temp = sscale;
         if (system_item_scale_temp > maximumitemscaleup)
             system_item_scale_temp = maximumitemscaleup;

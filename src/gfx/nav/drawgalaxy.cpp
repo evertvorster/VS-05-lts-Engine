@@ -136,10 +136,9 @@ static void DrawNode( int type,
         }
     }
     NavigationSystem::DrawCircle( x, y, size, race );
-    // Label only the player's current system (or the mouse-over/clicked one).
-    // In the galaxy view there is no single "largest" object, so we avoid
-    // labelling every system (which overlapped or spread into a long list); the
-    // current system's name is enough.
+    // Label every drawn system (the current one and those shown, e.g. via jump
+    // points). There is no single "largest" object in the galaxy view; the
+    // visible set is small and findfreesector prevents label overlap.
     if ( (showlabel && !mouseover) || willclick ) {
         string tsector, nam;
         Beautify( source, tsector, nam );
@@ -903,9 +902,12 @@ void NavigationSystem::DrawGalaxy()
         if (systemselectionindex == temp)
             DrawTargetCorners( the_x, the_y, (insert_size)*1.4, selectcol );
         bool moused = false;
+        // Label every system actually drawn (the current system and those shown,
+        // e.g. reachable via jump points). findfreesector prevents label overlap;
+        // the visible set is small so it stays readable.
         DrawNode( insert_type, insert_size, the_x, the_y,
                   (*systemIter).GetName(), screenoccupation, moused, isPath ? pathcol : col, false, false,
-                  isPath ? "" : csector, (currentsystemindex == temp) );
+                  isPath ? "" : csector, true );
         if ( TestIfInRangeRad( the_x, the_y, insert_size, mouse_x_current, mouse_y_current ) ) {
             mouselist.push_back( systemdrawnode( insert_type, insert_size, the_x, the_y, (*systemIter).GetName(),
                                                  systemIter.getIndex(), screenoccupation, false, isPath ? pathcol : col ) );
