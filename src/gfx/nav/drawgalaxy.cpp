@@ -294,6 +294,15 @@ bool checkedVisited( const std::string &n )
     }
 }
 
+// True only for systems the player has actually visited (value 1.0), not merely
+// seen/adjacent (0.0).
+bool isVisited( const std::string &n )
+{
+    string key( string( "visited_" )+n );
+    vector< float > *v = &_Universe->AccessCockpit()->savegame->getMissionData( key );
+    return v->size() > 0 && (*v)[0] == 1.0f;
+}
+
 NavigationSystem::SystemIterator&NavigationSystem::SystemIterator::operator++()
 {
     which += 1;
@@ -803,6 +812,32 @@ void NavigationSystem::DrawGalaxy()
         galaxyCam.setFraming( center, half_x, half_y, half_z, NAV_FIT_FOV );
         galaxyNeedsRefit = false;
     }
+
+    // Which systems to draw: every system the player has VISITED, plus every
+    // jump-point destination out of those systems. This shows your explored
+    // region and where you can go next, without flooding the map with the whole
+    // galaxy.
+    {
+        std::set< std::string > drawSys;
+        for (unsigned i = 0; i < systemIter.size(); ++i) {
+            string nm = systemIter[i].GetName();
+            if (isVisited( nm )) {
+                drawSys.insert( nm );
+                for (unsigned d = 0; d < systemIter[i].GetDestinationSize(); ++d)
+                    drawSys.insert( systemIter[systemIter[i].GetDestinationIndex( d )].GetName() );
+            }
+        }
+        // If nothing visited (fresh save), at least show the current system's
+        // jump network so the map isn't empty.
+        if (drawSys.empty()) {
+            unsigned cur = focusedsystemindex < systemIter.size() ? focusedsystemindex : 0;
+            drawSys.insert( systemIter[cur].GetName() );
+            for (unsigned d = 0; d < systemIter[cur].GetDestinationSize(); ++d)
+                drawSys.insert( systemIter[systemIter[cur].GetDestinationIndex( d )].GetName() );
+        }
+        navDrawSet.swap( drawSys );
+    }
+
     DrawOriginOrientationTri( center_nav_x, center_nav_y, 0 );
 
     //Enlist the items and attributes
@@ -811,9 +846,9 @@ void NavigationSystem::DrawGalaxy()
     systemIter.seek();
     while ( !systemIter.done() ) {
         //this draws the points
-        //IGNORE UNDRAWABLE SYSTEMS
+        //Draw only visited systems + their jump destinations (see navDrawSet).
         //**********************************
-        if ( !systemIter->isDrawable() ) {
+        if ( navDrawSet.find( systemIter->GetName() ) == navDrawSet.end() ) {
             ++systemIter;
             continue;
         }
@@ -922,7 +957,7 @@ void NavigationSystem::DrawGalaxy()
             std::vector<float>::iterator v = verts.begin();
             for (unsigned i = 0; i < destsize; ++i) {
                 CachedSystemIterator::SystemInfo &oth = systemIter[systemIter->GetDestinationIndex( i )];
-                if ( oth.isDrawable() ) {
+                if ( navDrawSet.find( oth.GetName() ) != navDrawSet.end() ) {
                     QVector posoth = oth.Position();
 
                     float the_new_x, the_new_y, oth_sscale, oth_item_scale;

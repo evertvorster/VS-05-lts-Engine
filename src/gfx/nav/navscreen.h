@@ -188,6 +188,7 @@ private:
     bool          mouse_wentdown[5];
     UnitContainer currentselection;
     double        navNearDist;    // dist from camera to nearest significant object (for zoom/pan scale)
+    std::set< std::string > navDrawSet;   // galaxy systems to draw (visited + their jump destinations)
     GFXColor     *factioncolours;
     GFXColor      currentcol;
     GFXColor      destinationcol;
