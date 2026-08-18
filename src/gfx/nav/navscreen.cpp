@@ -127,6 +127,9 @@ void NavigationSystem::Setup()
     static int max_map_nodes = XMLSupport::parse_int( vs_config->getVariable( "graphics", "max_map_nodes", "256000" ) );
     systemIter.init( UniverseUtil::getSystemFile(), max_map_nodes );
     sectorIter.init( systemIter );
+    // Sync the current-system index to the player's actual location, so the
+    // galaxy view labels the right system (and the fit centres correctly).
+    setCurrentSystem( _Universe->activeStarSystem()->getFileName() );
     systemselectionindex   = 0;
     sectorselectionindex   = 0;
     destinationsystemindex = 0;

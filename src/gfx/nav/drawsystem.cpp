@@ -129,22 +129,20 @@ void NavigationSystem::DrawSystem()
             center = center / double(pts.size());
         }
 
-        // Extent = spread of significant units, rejecting any unit farther than
-        // 3x the median distance from the centre (a robust cluster estimator).
-        std::vector< float > dists;
-        for (size_t i = 0; i < pts.size(); ++i)
-            dists.push_back( (pts[i]-center).Magnitude() );
-        std::sort( dists.begin(), dists.end() );
-        float median = dists[ dists.size()/2 ];
+        // Extent = spread of ALL significant units, so nothing meaningful (bases,
+        // planets, stations, jump points) is left off the framed view. The old
+        // 3x-median rejection could drop a legitimately far base/planet, leaving
+        // it off-screen ("flashes on the edge"). For a free-fly camera the
+        // auto-frame only matters on first open, so frame to include everything
+        // significant.
         float maxdist = 0.0f;
         for (size_t i = 0; i < pts.size(); ++i) {
-            float d = dists[i];
-            if (d <= 3.0f*median)
-                if (d > maxdist)
-                    maxdist = d;
+            float d = (pts[i]-center).Magnitude();
+            if (d > maxdist)
+                maxdist = d;
         }
         if (maxdist <= 0.0f)
-            maxdist = dists.back();
+            maxdist = 1.0f;
 
         // Fit the camera so maxdist fits the viewport, looking at the centre.
         systemCam.setFraming( center, maxdist, maxdist, maxdist, NAV_FIT_FOV );
