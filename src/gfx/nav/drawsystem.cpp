@@ -370,6 +370,9 @@ void NavigationSystem::DrawSystem()
     auto isKeeper = [&]( const NavItem &it ) {
         if (it.unit && UnitUtil::isPlayerStarship( it.unit ) > -1)
             return true;
+        // Bases are always shown (never collapsed into a nearby planet).
+        if (it.unit && UnitUtil::getFlightgroupNameCR( it.unit ) == "Base")
+            return true;
         float tx = it.x, ty = it.y;
         return TestIfInRangeRad( tx, ty, it.size, mouse_x_current, mouse_y_current );
     };

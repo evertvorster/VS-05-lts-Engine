@@ -969,6 +969,7 @@ void NavigationSystem::DrawButton( float &x1, float &x2, float &y1, float &y2, i
                 //if in nav system NOT mission
 
                 unsetbit( whattodraw, 2 );                      //draw system
+                systemNeedsRefit = true;                        //re-frame the sector view on entry
             } else {
                 //if in mission mode
                 unsetbit( whattodraw, 3 );
